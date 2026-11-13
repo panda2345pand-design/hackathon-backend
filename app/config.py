@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_use_vertex: bool = False
     gemini_project: str = ""
-    gemini_location: str = "asia-northeast1"
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_location: str = "global"
+    gemini_model: str = "gemini-3.8-flash"
     cors_origins: str = "http://localhost:5173"
 
     @property

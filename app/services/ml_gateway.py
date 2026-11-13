@@ -16,12 +16,22 @@ def _predictor():
         return None
 
 
+def _ml_title(title: str) -> tuple[str, bool]:
+    from app.services import ai  # 循環 import を避けるため関数の中で読む
+    return ai.title_for_ml(title)
+
+
 def predict_price(title: str, category: str, brand: str | None, condition: str) -> dict:
     p = _predictor()
     if not p:
         return dict(_UNAVAILABLE_PRICE)
     try:
-        return p.predict_price(title, category, brand, condition)
+        en, translated = _ml_title(title)
+        out = p.predict_price(en, category, brand, condition)
+        if translated and out.get("available"):  # 透明化:英語に直して推定したことを理由に出す
+            out["basis"] = [*out.get("basis", []), {"feature": "商品名の英訳", "value": en,
+                                                    "effect": "モデルは英語の単語で学習しているため、Gemini で英語に直してから推定しました"}]
+        return out
     except Exception as e:
         log.warning("predict_price failed: %r", e)
         return dict(_UNAVAILABLE_PRICE)
@@ -31,7 +41,7 @@ def assign_cluster(title: str, category: str) -> dict:
     p = _predictor()
     if p:
         try:
-            return p.assign_cluster(title, category)
+            return p.assign_cluster(_ml_title(title)[0], category)
         except Exception as e:
             log.warning("assign_cluster failed: %r", e)
     return {"available": False, "cluster_id": None, "cluster_label": None}

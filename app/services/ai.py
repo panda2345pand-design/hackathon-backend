@@ -55,6 +55,27 @@ def _ask_json(prompt: str) -> dict | None:
         return None
 
 
+# ---------- 0. 商品名を英語にする(価格予測モデルは英語の単語しか知らないため) ----------
+_en_cache: dict[str, str] = {}
+
+
+def title_for_ml(title: str) -> tuple[str, bool]:
+    """日本語などが入った商品名を、価格予測・クラスタ用に英語へ直す。返り値は (モデルに渡す商品名, 翻訳したか)。
+    英数字だけならそのまま。Gemini が使えなければ元のまま(その場合、モデルはカテゴリ・ブランド・状態だけで決める)。"""
+    if title.isascii():
+        return title, False
+    if title in _en_cache:
+        return _en_cache[title], True
+    data = _ask_json("次のフリマ商品の名前を、米国のフリマアプリの出品タイトルのような短い英語に直してください。"
+                     "ブランド名・型番はそのまま。情報を足さない。\n"
+                     f"商品名: {title}\n" '出力は JSON: {"title_en": "..."}')
+    en = (data or {}).get("title_en")
+    if isinstance(en, str) and en.strip():
+        _en_cache[title] = en.strip()[:100]
+        return _en_cache[title], True
+    return title, False
+
+
 # ---------- 1. 説明文の生成 ----------
 def describe(title: str, category: str, condition: str, brand: str | None, keywords: str | None) -> dict:
     data = _ask_json(
