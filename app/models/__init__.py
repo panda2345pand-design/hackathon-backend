@@ -1,1 +1,2 @@
 """モデル層:User・Item・Order などアプリの主役の名詞。ID(UUID)と作成日時は、モデルの生成関数(new_item など)で作る(設計ワークショップ 11/10 の4番)。"""
+from app.models.entities import *  # noqa: F401,F403

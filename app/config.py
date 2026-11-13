@@ -6,8 +6,15 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "sqlite:///./local.db"
-    gemini_api_key: str = ""
+    # dev = 「dev:<uid>」というトークンを受け付ける(ローカルとテスト用)。firebase = Firebase の ID トークンを検証する(本番)
+    auth_mode: str = "dev"
     firebase_project_id: str = "uttc-class10-react"
+    # Gemini:API キー(Google AI Studio)か、Vertex AI(Cloud Run のサービスアカウント)のどちらか
+    gemini_api_key: str = ""
+    gemini_use_vertex: bool = False
+    gemini_project: str = ""
+    gemini_location: str = "asia-northeast1"
+    gemini_model: str = "gemini-2.5-flash"
     cors_origins: str = "http://localhost:5173"
 
     @property
