@@ -1,0 +1,1182 @@
+{
+ "k": 38,
+ "silhouette": 0.3555571436882019,
+ "silhouette_note": "euclidean on L2-normalized SVD vectors, fixed random sample of 20000 items",
+ "selection_rule": "smallest candidate k (8..40) with silhouette >= max - 0.01",
+ "silhouette_max_in_search": 0.3656749129295349,
+ "k_selection": [
+  {
+   "k": 8,
+   "inertia": 160944.046875,
+   "silhouette": 0.2773599326610565,
+   "candidate": true,
+   "inertia_drop_pct": null
+  },
+  {
+   "k": 10,
+   "inertia": 150286.359375,
+   "silhouette": 0.2695249617099762,
+   "candidate": true,
+   "inertia_drop_pct": 6.62
+  },
+  {
+   "k": 12,
+   "inertia": 140219.53125,
+   "silhouette": 0.27871161699295044,
+   "candidate": true,
+   "inertia_drop_pct": 6.7
+  },
+  {
+   "k": 14,
+   "inertia": 132324.28125,
+   "silhouette": 0.29726579785346985,
+   "candidate": true,
+   "inertia_drop_pct": 5.63
+  },
+  {
+   "k": 16,
+   "inertia": 128199.5859375,
+   "silhouette": 0.2987357974052429,
+   "candidate": true,
+   "inertia_drop_pct": 3.12
+  },
+  {
+   "k": 18,
+   "inertia": 122548.453125,
+   "silhouette": 0.30728453397750854,
+   "candidate": true,
+   "inertia_drop_pct": 4.41
+  },
+  {
+   "k": 20,
+   "inertia": 119338.859375,
+   "silhouette": 0.30164849758148193,
+   "candidate": true,
+   "inertia_drop_pct": 2.62
+  },
+  {
+   "k": 22,
+   "inertia": 114889.453125,
+   "silhouette": 0.3180513381958008,
+   "candidate": true,
+   "inertia_drop_pct": 3.73
+  },
+  {
+   "k": 24,
+   "inertia": 109712.84375,
+   "silhouette": 0.3217516839504242,
+   "candidate": true,
+   "inertia_drop_pct": 4.51
+  },
+  {
+   "k": 26,
+   "inertia": 106712.125,
+   "silhouette": 0.3263256549835205,
+   "candidate": true,
+   "inertia_drop_pct": 2.74
+  },
+  {
+   "k": 28,
+   "inertia": 102037.6484375,
+   "silhouette": 0.33045682311058044,
+   "candidate": true,
+   "inertia_drop_pct": 4.38
+  },
+  {
+   "k": 30,
+   "inertia": 100854.96875,
+   "silhouette": 0.3326139748096466,
+   "candidate": true,
+   "inertia_drop_pct": 1.16
+  },
+  {
+   "k": 32,
+   "inertia": 95857.671875,
+   "silhouette": 0.34039604663848877,
+   "candidate": true,
+   "inertia_drop_pct": 4.95
+  },
+  {
+   "k": 34,
+   "inertia": 94673.828125,
+   "silhouette": 0.3472953736782074,
+   "candidate": true,
+   "inertia_drop_pct": 1.24
+  },
+  {
+   "k": 36,
+   "inertia": 92054.65625,
+   "silhouette": 0.35315459966659546,
+   "candidate": true,
+   "inertia_drop_pct": 2.77
+  },
+  {
+   "k": 38,
+   "inertia": 87856.640625,
+   "silhouette": 0.3608672022819519,
+   "candidate": true,
+   "inertia_drop_pct": 4.56
+  },
+  {
+   "k": 40,
+   "inertia": 85539.4921875,
+   "silhouette": 0.3656749129295349,
+   "candidate": true,
+   "inertia_drop_pct": 2.64
+  },
+  {
+   "k": 50,
+   "inertia": 73476.9296875,
+   "silhouette": 0.37333187460899353,
+   "candidate": false,
+   "inertia_drop_pct": 14.1
+  },
+  {
+   "k": 60,
+   "inertia": 66142.3984375,
+   "silhouette": 0.38404178619384766,
+   "candidate": false,
+   "inertia_drop_pct": 9.98
+  },
+  {
+   "k": 80,
+   "inertia": 58591.8046875,
+   "silhouette": 0.38272935152053833,
+   "candidate": false,
+   "inertia_drop_pct": 11.42
+  },
+  {
+   "k": 100,
+   "inertia": 52719.3515625,
+   "silhouette": 0.38607579469680786,
+   "candidate": false,
+   "inertia_drop_pct": 10.02
+  }
+ ],
+ "pipeline": [
+  "TfidfVectorizer(title + top category, english stop words)",
+  "TruncatedSVD(50)",
+  "Normalizer(l2)",
+  "KMeans(k=38)"
+ ],
+ "tfidf_vocabulary": 20000,
+ "svd_explained_variance": 0.1475714147090912,
+ "trained_rows": 1416142,
+ "ksearch_rows": 300000,
+ "pipeline_reload_agreement": 1.0,
+ "clusters": [
+  {
+   "cluster_id": 0,
+   "label": "Toys & Collectibles: funko / pop / exclusive",
+   "top_terms": [
+    "funko",
+    "pop",
+    "exclusive",
+    "lot",
+    "chase",
+    "freddy",
+    "soda",
+    "figure",
+    "signed",
+    "marvel"
+   ],
+   "size": 16669,
+   "share": 0.011770712259081363,
+   "dominant_category": "Toys & Collectibles",
+   "dominant_category_share": 0.970484132221489,
+   "median_price_usd": 30.0,
+   "examples": [
+    "Funko Pop Lot Marvel Falcon & the Winter Soldier Complete Set 700-702 & 811-819",
+    "Fairy Tale Gray Fullbuster Funko Pop #1051",
+    "Funko Pop Horror CHASE VAULTED The Shining Grady Twins in .5 mm protector"
+   ]
+  },
+  {
+   "cluster_id": 1,
+   "label": "Women: mini / backpack / loungefly",
+   "top_terms": [
+    "mini",
+    "backpack",
+    "loungefly",
+    "skirt",
+    "figure",
+    "figures",
+    "boden",
+    "free",
+    "disney",
+    "nwt"
+   ],
+   "size": 14221,
+   "share": 0.01004207205209647,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.4857604950425427,
+   "median_price_usd": 29.0,
+   "examples": [
+    "Mini Boden Skirt/Skort",
+    "Navy Vintage Y2k Grunge Mini Pin Up Stripe Skirt.",
+    "Mini Melissa bows size 5"
+   ]
+  },
+  {
+   "cluster_id": 2,
+   "label": "Women: pink / secret / victoria",
+   "top_terms": [
+    "pink",
+    "secret",
+    "victoria",
+    "pants",
+    "shoes",
+    "bra",
+    "lululemon",
+    "nwt",
+    "hoodie",
+    "white"
+   ],
+   "size": 52951,
+   "share": 0.037391024346428534,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.91497799852694,
+   "median_price_usd": 25.0,
+   "examples": [
+    "Balenciaga Embellised Eiffel PantS NWT",
+    "Jay Godfrey Moore jumpsuit NWT",
+    "Shapermint NWT High Wasted Shaper Panty XL/XXL"
+   ]
+  },
+  {
+   "cluster_id": 3,
+   "label": "Handmade: kitty / hello / vinyl",
+   "top_terms": [
+    "kitty",
+    "hello",
+    "vinyl",
+    "sanrio",
+    "dog",
+    "plush",
+    "cosplay",
+    "keychain",
+    "record",
+    "lp"
+   ],
+   "size": 26080,
+   "share": 0.018416232270492647,
+   "dominant_category": "Handmade",
+   "dominant_category_share": 0.3309432515337423,
+   "median_price_usd": 20.0,
+   "examples": [
+    "Sweetener - Ariana Grande Peach vinyl",
+    "2004 Hallmark VEGGIE TALES Tree Ornament Drummer Boy Jr Asparagus",
+    "LEVEL EUROPEAN STYLE GRADE CROSSING - HO"
+   ]
+  },
+  {
+   "cluster_id": 4,
+   "label": "Home: christmas / glass / box",
+   "top_terms": [
+    "christmas",
+    "glass",
+    "box",
+    "decor",
+    "art",
+    "set",
+    "wall",
+    "ceramic",
+    "brass",
+    "hand"
+   ],
+   "size": 8327,
+   "share": 0.005880060050475164,
+   "dominant_category": "Home",
+   "dominant_category_share": 0.872222889395941,
+   "median_price_usd": 23.0,
+   "examples": [
+    "Vintage Silver Swan Figurine Decoration",
+    "Brass Duck Head Bookends by Leonard Solid Brass Collection. 6\" Tall",
+    "DIY Warli Painting -Folk Art Of Maharashtra - w/DVD by Potli"
+   ]
+  },
+  {
+   "cluster_id": 5,
+   "label": "Toys & Collectibles: disney / mickey / mouse",
+   "top_terms": [
+    "disney",
+    "mickey",
+    "mouse",
+    "minnie",
+    "parks",
+    "pin",
+    "princess",
+    "loungefly",
+    "stitch",
+    "new"
+   ],
+   "size": 25077,
+   "share": 0.017707969963464115,
+   "dominant_category": "Toys & Collectibles",
+   "dominant_category_share": 0.3835387008015313,
+   "median_price_usd": 23.0,
+   "examples": [
+    "Retired Disney Napier Jewelry Pin with Goofy and Jeweled Question Mark",
+    "Disney The Little Mermaid 2t One piece SwimSuit flounder Sebastian good",
+    "NWT Disney Parks 2016 “Walt Disney World Resort” Black Rain Jacket"
+   ]
+  },
+  {
+   "cluster_id": 6,
+   "label": "Women: sleeve / long / short",
+   "top_terms": [
+    "sleeve",
+    "long",
+    "short",
+    "shirt",
+    "size",
+    "dress",
+    "lululemon",
+    "neck",
+    "button",
+    "black"
+   ],
+   "size": 17435,
+   "share": 0.012311618467639545,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.6929739030685403,
+   "median_price_usd": 19.0,
+   "examples": [
+    "Adidas Jeremy scott pink velour long sleeve crop top  XL",
+    "Cloisonné Long Leaf Painted Earrings",
+    "Ksubi Bolt Long Sleeve Crop top in Size XS Color Beige"
+   ]
+  },
+  {
+   "cluster_id": 7,
+   "label": "Women: kate / spade / quinn",
+   "top_terms": [
+    "kate",
+    "spade",
+    "quinn",
+    "purse",
+    "crossbody",
+    "dress",
+    "bag",
+    "wallet",
+    "york",
+    "tote"
+   ],
+   "size": 9237,
+   "share": 0.006522650977091281,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.5709645988957454,
+   "median_price_usd": 28.0,
+   "examples": [
+    "Kate Spade Seraphine Violet Nylon Tote/ purse with Bow",
+    "KATE QUINN KNOT TIE COUNTRY BUBBLE | CARAMEL MUSHROOMS | RAW EDGE ORGANIC COTTON",
+    "Kate Quinn calendula flower quilted play mat"
+   ]
+  },
+  {
+   "cluster_id": 8,
+   "label": "Men: mens / size / hoodie",
+   "top_terms": [
+    "mens",
+    "size",
+    "hoodie",
+    "jersey",
+    "shoes",
+    "hat",
+    "adidas",
+    "black",
+    "watch",
+    "pants"
+   ],
+   "size": 64073,
+   "share": 0.0452447565286532,
+   "dominant_category": "Men",
+   "dominant_category_share": 0.9906981099683174,
+   "median_price_usd": 36.0,
+   "examples": [
+    "AJ Styles Phenomenally Done tshirt XL",
+    "Silver brushed adapter Citizen Ecozilla Autozilla Eco Zilla Fit BJ8050 + ZULU",
+    "Fendi crewneck sweatshirt"
+   ]
+  },
+  {
+   "cluster_id": 9,
+   "label": "Beauty: perfume / oz / body",
+   "top_terms": [
+    "perfume",
+    "oz",
+    "body",
+    "eau",
+    "palette",
+    "parfum",
+    "spray",
+    "lip",
+    "eyeshadow",
+    "edp"
+   ],
+   "size": 69575,
+   "share": 0.04912996013111679,
+   "dominant_category": "Beauty",
+   "dominant_category_share": 0.9823643550125764,
+   "median_price_usd": 21.0,
+   "examples": [
+    "Melt Cosmetics Amor y Mariposa Hand Mirror Butterflies",
+    "Victoria's Secret Bombshell Gold Perfume",
+    "VS PINK TRIO OF MINI BODY MISTS"
+   ]
+  },
+  {
+   "cluster_id": 10,
+   "label": "Women: dress / size / maxi",
+   "top_terms": [
+    "dress",
+    "size",
+    "maxi",
+    "floral",
+    "prom",
+    "black",
+    "midi",
+    "nwt",
+    "mini",
+    "white"
+   ],
+   "size": 52798,
+   "share": 0.03728298433349198,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.9140687147240426,
+   "median_price_usd": 25.0,
+   "examples": [
+    "Dress",
+    "Anthropologie Karoline Boho Maxi Dress",
+    "Vguc sz2 DDS hot air Balloon dress"
+   ]
+  },
+  {
+   "cluster_id": 11,
+   "label": "Electronics: nintendo / case / iphone",
+   "top_terms": [
+    "nintendo",
+    "case",
+    "iphone",
+    "switch",
+    "pro",
+    "apple",
+    "playstation",
+    "xbox",
+    "controller",
+    "camera"
+   ],
+   "size": 84356,
+   "share": 0.059567472753438565,
+   "dominant_category": "Electronics",
+   "dominant_category_share": 0.967720138460809,
+   "median_price_usd": 36.0,
+   "examples": [
+    "19 inch seiki flat screen TV",
+    "BTS Love Yourself Answer Album (S) + poster",
+    "Loopy Opal iPhone 11 Pro Max Case"
+   ]
+  },
+  {
+   "cluster_id": 12,
+   "label": "Women: bag / tote / crossbody",
+   "top_terms": [
+    "bag",
+    "tote",
+    "crossbody",
+    "shoulder",
+    "leather",
+    "coach",
+    "belt",
+    "black",
+    "gucci",
+    "louis"
+   ],
+   "size": 30893,
+   "share": 0.02181490274280404,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.7854853850386819,
+   "median_price_usd": 45.0,
+   "examples": [
+    "Final Sale! Coach Tabby Shoulder Crossbody Bag 26",
+    "Sanrio Pochacco Puffy Nylon Duffle Bag Tote padded Luggage Vintage 2000 RARE",
+    "FRINGE - Large Tote Bag w/ Shoulder Strap SDCC Comic-Con 2011 RARE"
+   ]
+  },
+  {
+   "cluster_id": 13,
+   "label": "Kids: baby / girl / boy",
+   "top_terms": [
+    "baby",
+    "girl",
+    "boy",
+    "kyte",
+    "clothes",
+    "months",
+    "bundle",
+    "romper",
+    "outfit",
+    "reborn"
+   ],
+   "size": 19478,
+   "share": 0.013754270405086496,
+   "dominant_category": "Kids",
+   "dominant_category_share": 0.7827292329807989,
+   "median_price_usd": 16.0,
+   "examples": [
+    "Carter's baby boy fire truck sleeper 6 m",
+    "Carter's baby girl romper sz 24M new",
+    "Graco Modes Nest Travel System, Includes Baby Stroller with Height Adjustable Re"
+   ]
+  },
+  {
+   "cluster_id": 14,
+   "label": "Women: womens / size / shoes",
+   "top_terms": [
+    "womens",
+    "size",
+    "shoes",
+    "black",
+    "dress",
+    "nike",
+    "sandals",
+    "shorts",
+    "new",
+    "shirt"
+   ],
+   "size": 19325,
+   "share": 0.01364623039214994,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.9734023285899095,
+   "median_price_usd": 20.0,
+   "examples": [
+    "Womens dress",
+    "Tommy Hilfiger Polo Dress womens size xx",
+    "Louis Vuitton Womens White Runaway Sneakers US6 (EU38)"
+   ]
+  },
+  {
+   "cluster_id": 15,
+   "label": "Women: boots / heels / skirt",
+   "top_terms": [
+    "boots",
+    "heels",
+    "skirt",
+    "bikini",
+    "blouse",
+    "sweater",
+    "crop",
+    "romper",
+    "sunglasses",
+    "sneakers"
+   ],
+   "size": 103762,
+   "share": 0.0732709007994961,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.9991133555636939,
+   "median_price_usd": 22.0,
+   "examples": [
+    "Le Silla Sude Wedge Ankle Boots",
+    "Pandora stackable rings",
+    "Simply Southern"
+   ]
+  },
+  {
+   "cluster_id": 16,
+   "label": "Vintage & collectibles: glass / brooch / silver",
+   "top_terms": [
+    "glass",
+    "brooch",
+    "silver",
+    "keychain",
+    "gold",
+    "charm",
+    "vase",
+    "antique",
+    "rare",
+    "pendant"
+   ],
+   "size": 65100,
+   "share": 0.04596996628869139,
+   "dominant_category": "Vintage & collectibles",
+   "dominant_category_share": 0.8090322580645162,
+   "median_price_usd": 23.0,
+   "examples": [
+    "Vintage Custom Harley Davidson Seat - Velvet Skull",
+    "Vintage Carved Bovine Bone Brass Bangle Bracelet Set",
+    "Vtg. Pale green made in USA bowl"
+   ]
+  },
+  {
+   "cluster_id": 17,
+   "label": "Women: ring / necklace / silver",
+   "top_terms": [
+    "ring",
+    "necklace",
+    "silver",
+    "earrings",
+    "sterling",
+    "gold",
+    "bracelet",
+    "925",
+    "14k",
+    "diamond"
+   ],
+   "size": 28465,
+   "share": 0.020100385413327194,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.9251712629545056,
+   "median_price_usd": 28.0,
+   "examples": [
+    "Women’s pink and silver watch",
+    "Ed Hardy Rose Ankle Bracelet",
+    "David Yurnman Onyx Black ring"
+   ]
+  },
+  {
+   "cluster_id": 18,
+   "label": "Women: size / sandals / black",
+   "top_terms": [
+    "size",
+    "sandals",
+    "black",
+    "shoes",
+    "10",
+    "plus",
+    "small",
+    "wedge",
+    "leather",
+    "nwt"
+   ],
+   "size": 40679,
+   "share": 0.028725226707491197,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.9558986209100518,
+   "median_price_usd": 24.0,
+   "examples": [
+    "Djerf Avenue Cream Terry On The Go Pants by Matilda Djerf size XXS",
+    "Born Women's Size 6 Thong Flip Flop Leather Shoe #284",
+    "Floral Blue Sundress Size L"
+   ]
+  },
+  {
+   "cluster_id": 19,
+   "label": "Kids: girls / toddler / size",
+   "top_terms": [
+    "girls",
+    "toddler",
+    "size",
+    "shoes",
+    "little",
+    "boys",
+    "sleepies",
+    "romper",
+    "dress",
+    "12"
+   ],
+   "size": 57808,
+   "share": 0.04082076514925763,
+   "dominant_category": "Kids",
+   "dominant_category_share": 0.9877179629117078,
+   "median_price_usd": 16.0,
+   "examples": [
+    "Monkey Feet Ballet flat 18/24 month multi",
+    "Little Sleepies sunshine zippy",
+    "The Bailey Boys Santa pajamas, size 7"
+   ]
+  },
+  {
+   "cluster_id": 20,
+   "label": "Sports & outdoors: bra / golf / bike",
+   "top_terms": [
+    "bra",
+    "golf",
+    "bike",
+    "bag",
+    "helmet",
+    "driver",
+    "baseball",
+    "new",
+    "nike",
+    "bat"
+   ],
+   "size": 25864,
+   "share": 0.018263705193405744,
+   "dominant_category": "Sports & outdoors",
+   "dominant_category_share": 0.840357253325085,
+   "median_price_usd": 32.0,
+   "examples": [
+    "Tour Collection Golf Set with Bag",
+    "Callaway Mills 2017 Super Soft Yellow go",
+    "Innova Condor"
+   ]
+  },
+  {
+   "cluster_id": 21,
+   "label": "Women: tank / lululemon / size",
+   "top_terms": [
+    "tank",
+    "lululemon",
+    "size",
+    "align",
+    "racerback",
+    "tops",
+    "crop",
+    "black",
+    "nwt",
+    "womens"
+   ],
+   "size": 14969,
+   "share": 0.01057026767089741,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.8856303026254259,
+   "median_price_usd": 14.25,
+   "examples": [
+    "Women's/teen tank top xs",
+    "Tank Top pink women's size large",
+    "Ladies 3X Tank Top"
+   ]
+  },
+  {
+   "cluster_id": 22,
+   "label": "Toys & Collectibles: figure / photocard / plush",
+   "top_terms": [
+    "figure",
+    "photocard",
+    "plush",
+    "pokemon",
+    "card",
+    "lego",
+    "star",
+    "pin",
+    "squishmallow",
+    "wars"
+   ],
+   "size": 150905,
+   "share": 0.10656064151758793,
+   "dominant_category": "Toys & Collectibles",
+   "dominant_category_share": 0.9953613200357841,
+   "median_price_usd": 22.0,
+   "examples": [
+    "hotwheels Ai overpass bridge pk bnib",
+    "5 inch stitch squishmallow",
+    "Sailor Moon x My Melody Sanrio Plush LAST ONE"
+   ]
+  },
+  {
+   "cluster_id": 23,
+   "label": "Toys & Collectibles: set / piece / bikini",
+   "top_terms": [
+    "set",
+    "piece",
+    "bikini",
+    "new",
+    "figs",
+    "pajama",
+    "complete",
+    "scrub",
+    "gift",
+    "scrubs"
+   ],
+   "size": 38950,
+   "share": 0.027504303946920577,
+   "dominant_category": "Toys & Collectibles",
+   "dominant_category_share": 0.25255455712451863,
+   "median_price_usd": 26.0,
+   "examples": [
+    "THE SIMPSON 2002 Playmates BLOCKO Figure Set (Carl, Smithers, Mr. Burns)",
+    "Pioneer woman canister set",
+    "Lingerie set"
+   ]
+  },
+  {
+   "cluster_id": 24,
+   "label": "Women: shorts / jean / lululemon",
+   "top_terms": [
+    "shorts",
+    "jean",
+    "lululemon",
+    "size",
+    "denim",
+    "nike",
+    "biker",
+    "hotty",
+    "eagle",
+    "american"
+   ],
+   "size": 24172,
+   "share": 0.01706890975622501,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.7266672182690717,
+   "median_price_usd": 17.0,
+   "examples": [
+    "Free People Bralette Shorts Set XS",
+    "Shorts",
+    "Uniqlo Liberty Of London PJ Shorts - Size M"
+   ]
+  },
+  {
+   "cluster_id": 25,
+   "label": "Books: book / manga / lot",
+   "top_terms": [
+    "book",
+    "manga",
+    "lot",
+    "comics",
+    "comic",
+    "magazine",
+    "edition",
+    "vol",
+    "set",
+    "signed"
+   ],
+   "size": 23601,
+   "share": 0.016665701603370282,
+   "dominant_category": "Books",
+   "dominant_category_share": 0.9631795262912588,
+   "median_price_usd": 20.0,
+   "examples": [
+    "Flash",
+    "Titanium Rain Hardcover HC Dust Jacket Fighter Jet Plane War Air Force Dogfight",
+    "Classroom Sign"
+   ]
+  },
+  {
+   "cluster_id": 26,
+   "label": "Home: dunn / rae / decor",
+   "top_terms": [
+    "dunn",
+    "rae",
+    "decor",
+    "tumbler",
+    "mug",
+    "starbucks",
+    "wall",
+    "candle",
+    "poster",
+    "halloween"
+   ],
+   "size": 66110,
+   "share": 0.04668317160284774,
+   "dominant_category": "Home",
+   "dominant_category_share": 0.966510361518681,
+   "median_price_usd": 21.0,
+   "examples": [
+    "Honeywell Home - QuietSet® Tower Fan - Black",
+    "canvas wall art",
+    "Balsam Hill Orchard Harvest Garland 10’ w/Clear lights"
+   ]
+  },
+  {
+   "cluster_id": 27,
+   "label": "Men: jordan / air / retro",
+   "top_terms": [
+    "jordan",
+    "air",
+    "retro",
+    "nike",
+    "mid",
+    "11",
+    "size",
+    "low",
+    "high",
+    "shoes"
+   ],
+   "size": 16548,
+   "share": 0.011685268850157682,
+   "dominant_category": "Men",
+   "dominant_category_share": 0.6372975586173556,
+   "median_price_usd": 91.0,
+   "examples": [
+    "Nike air jordan 1 retro high obsidian size 7",
+    "Air Jordan 6 Midnight Navy",
+    "Air Jordan 7"
+   ]
+  },
+  {
+   "cluster_id": 28,
+   "label": "Women: new / brand / box",
+   "top_terms": [
+    "new",
+    "brand",
+    "box",
+    "balance",
+    "sealed",
+    "york",
+    "like",
+    "size",
+    "tags",
+    "black"
+   ],
+   "size": 38080,
+   "share": 0.026889958775320553,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.2865021008403361,
+   "median_price_usd": 28.0,
+   "examples": [
+    "2 Hugo Boss Socks Mens Sz 7-13 New",
+    "NEW Metal Gear Solid: The Legacy Collection",
+    "H & M floral beautiful blues size 14 like new top love this blouse"
+   ]
+  },
+  {
+   "cluster_id": 29,
+   "label": "Toys & Collectibles: doll / high / monster",
+   "top_terms": [
+    "doll",
+    "high",
+    "monster",
+    "american",
+    "girl",
+    "barbie",
+    "mattel",
+    "rainbow",
+    "outfit",
+    "draculaura"
+   ],
+   "size": 22155,
+   "share": 0.01564461755953852,
+   "dominant_category": "Toys & Collectibles",
+   "dominant_category_share": 0.9001579778830964,
+   "median_price_usd": 26.0,
+   "examples": [
+    "Vintage eegee doll in baby gown",
+    "Ideal Chrissy turn and look Doll Grow hair",
+    "Monster high draculaura pet plush"
+   ]
+  },
+  {
+   "cluster_id": 30,
+   "label": "Women: purse / coach / wallet",
+   "top_terms": [
+    "purse",
+    "coach",
+    "wallet",
+    "crossbody",
+    "kors",
+    "michael",
+    "leather",
+    "wristlet",
+    "handbag",
+    "tote"
+   ],
+   "size": 23881,
+   "share": 0.016863421888482933,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.9638206105271974,
+   "median_price_usd": 40.0,
+   "examples": [
+    "Vintage Coach Hampton Saddle Lunch Tote Camel Leather Purse-Dustbag Included!",
+    "Coach Prairie Satchel + Wallet set",
+    "Vintage Coach Willis Black & Nickel Leather Flap Station Crossbody Bag Purse"
+   ]
+  },
+  {
+   "cluster_id": 31,
+   "label": "Beauty: bundle / size / girls",
+   "top_terms": [
+    "bundle",
+    "size",
+    "girls",
+    "makeup",
+    "clothes",
+    "boys",
+    "perfume",
+    "lot",
+    "skincare",
+    "new"
+   ],
+   "size": 24386,
+   "share": 0.01722002454556111,
+   "dominant_category": "Beauty",
+   "dominant_category_share": 0.2335356352005249,
+   "median_price_usd": 25.0,
+   "examples": [
+    "Fullmetal Alchemist Keychain bundle",
+    "Cricut bundle",
+    "Bundle Cinderella’s Carriage & Black Voodoo Gourmand Indie Fragrance - Cocoapink"
+   ]
+  },
+  {
+   "cluster_id": 32,
+   "label": "Women: jacket / black / leather",
+   "top_terms": [
+    "jacket",
+    "black",
+    "leather",
+    "jean",
+    "size",
+    "zip",
+    "north",
+    "face",
+    "denim",
+    "bomber"
+   ],
+   "size": 25452,
+   "share": 0.017972773916739987,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.6896118183246897,
+   "median_price_usd": 29.0,
+   "examples": [
+    "ivivva jacket",
+    "Strapless black lace bodysuit",
+    "White Denim Jacket and UA hoodie bundle"
+   ]
+  },
+  {
+   "cluster_id": 33,
+   "label": "Men: shirt / size / xl",
+   "top_terms": [
+    "shirt",
+    "size",
+    "xl",
+    "polo",
+    "mens",
+    "button",
+    "large",
+    "tee",
+    "medium",
+    "black"
+   ],
+   "size": 34568,
+   "share": 0.024409981484907587,
+   "dominant_category": "Men",
+   "dominant_category_share": 0.6273721360796112,
+   "median_price_usd": 17.0,
+   "examples": [
+    "Obey Shirt",
+    "Simply Southern T-shirt Large",
+    "Von Dutch Shirt"
+   ]
+  },
+  {
+   "cluster_id": 34,
+   "label": "Women: jeans / size / skinny",
+   "top_terms": [
+    "jeans",
+    "size",
+    "skinny",
+    "eagle",
+    "american",
+    "denim",
+    "rise",
+    "straight",
+    "blue",
+    "levi"
+   ],
+   "size": 15204,
+   "share": 0.010736211481616957,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.730531439094975,
+   "median_price_usd": 20.0,
+   "examples": [
+    "Blanched Jeans-White",
+    "PRPS Windsor Tapered Skinny Fit Men's Indigo Stretch Jeans Blue Size 36/32",
+    "Vigoss Jeans size"
+   ]
+  },
+  {
+   "cluster_id": 35,
+   "label": "Men: nike / air / max",
+   "top_terms": [
+    "nike",
+    "air",
+    "max",
+    "shoes",
+    "size",
+    "dunk",
+    "force",
+    "low",
+    "white",
+    "hoodie"
+   ],
+   "size": 26326,
+   "share": 0.01858994366384162,
+   "dominant_category": "Men",
+   "dominant_category_share": 0.5230190686013827,
+   "median_price_usd": 41.0,
+   "examples": [
+    "Nike Air Trainer SC II sz 12",
+    "Nike Sneakers",
+    "Nike LeBron 8 “HWC” Size 11.5"
+   ]
+  },
+  {
+   "cluster_id": 36,
+   "label": "Women: leggings / lululemon / size",
+   "top_terms": [
+    "leggings",
+    "lululemon",
+    "size",
+    "gymshark",
+    "align",
+    "black",
+    "pink",
+    "capri",
+    "lularoe",
+    "bundle"
+   ],
+   "size": 10275,
+   "share": 0.007255628319758894,
+   "dominant_category": "Women",
+   "dominant_category_share": 0.9148418491484185,
+   "median_price_usd": 20.0,
+   "examples": [
+    "Get nutz women leggings",
+    "Ladies Nike dri-fit leggings size large",
+    "Everlane Orange High Waisted Perform Leggings Size XX-Small"
+   ]
+  },
+  {
+   "cluster_id": 37,
+   "label": "Toys & Collectibles: lot / card / cards",
+   "top_terms": [
+    "lot",
+    "card",
+    "cards",
+    "figures",
+    "pokemon",
+    "barbie",
+    "jewelry",
+    "huge",
+    "figure",
+    "lego"
+   ],
+   "size": 28387,
+   "share": 0.020045306191045813,
+   "dominant_category": "Toys & Collectibles",
+   "dominant_category_share": 0.6693909183781308,
+   "median_price_usd": 25.0,
+   "examples": [
+    "MISB Toybiz Spider-Man lot of 4 figures",
+    "Lot of 69 Matchbox Cars Mixed Years With Vintage Vehicles",
+    "Mini Brands Mix Lot (Over 230 Miniature Toys)"
+   ]
+  }
+ ],
+ "data": {
+  "files": [
+   "merrec0.parquet",
+   "merrec1.parquet",
+   "merrec2.parquet",
+   "merrec3.parquet"
+  ],
+  "event_rows": 2110584,
+  "date_min": "2023-05-01 00:00:00",
+  "date_max": "2023-05-31 00:00:00",
+  "unique_items": 1416164,
+  "dropped_invalid": 22,
+  "items_used": 1416142,
+  "brand_missing_rate": 0.19591467522324738
+ },
+ "artifact": {
+  "file": "cluster.joblib",
+  "size_mb": 4.33
+ },
+ "versions": {
+  "python": "3.13.14",
+  "scikit_learn": "1.9.1",
+  "numpy": "2.5.4"
+ },
+ "train_seconds": 163.7
+}

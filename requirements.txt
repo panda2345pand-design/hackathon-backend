@@ -5,3 +5,11 @@ cryptography==46.0.3
 pydantic-settings==2.11.0
 pytest==8.4.2
 httpx==0.28.1
+google-auth==2.62.2
+requests==2.34.2
+google-genai==3.3.0
+# ML 推論(app/ml/predictor.py)に必要なもの。price.joblib / cluster.joblib はこの scikit-learn 版で保存している
+numpy==2.5.4
+scipy==1.18.1
+scikit-learn==1.9.1
+joblib==1.6.0
