@@ -47,7 +47,9 @@ def _ask_json(prompt: str) -> dict | None:
         return None
     try:
         r = client.models.generate_content(model=settings.gemini_model, contents=prompt,
-                                           config={"response_mime_type": "application/json", "temperature": 0.4})
+                                           # thinking_budget=0:考える時間を切る。実測で 1回 8秒 → 2秒(2026-11-14)。短い文章と判定には十分
+                                           config={"response_mime_type": "application/json", "temperature": 0.4,
+                                                   "thinking_config": {"thinking_budget": 0}})
         data = json.loads(r.text)
         return data if isinstance(data, dict) else None
     except Exception as e:

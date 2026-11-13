@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     gemini_location: str = "global"
     gemini_model: str = "gemini-3.8-flash"
     cors_origins: str = "http://localhost:5173"
+    # true のとき、起動時に商品が1件も無ければデモデータを入れる(Cloud SQL につなぐまでの仮の対応。コンテナ内の SQLite は再起動で消えるため)
+    seed_on_empty: bool = False
 
     @property
     def cors_origin_list(self) -> list[str]:

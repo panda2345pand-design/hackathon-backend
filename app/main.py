@@ -15,6 +15,9 @@ from app.routers import ai, health, items, users
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)  # 無いテーブルだけ作る(列の変更は追わない。本格運用なら Alembic)
+    if settings.seed_on_empty:
+        from scripts import seed
+        seed.main()
     yield
 
 
