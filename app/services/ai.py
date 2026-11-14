@@ -5,6 +5,7 @@
 - 「判定」は説明できる形にする:禁止物はまずキーワードの規則で見て、次に Gemini。交渉の通りやすさは数字の規則で決め、Gemini は文章だけを書く。
 """
 import json
+from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed, wait
 import logging
 import threading
 import time
@@ -46,32 +47,51 @@ def _gemini():
         if settings.gemini_api_key:
             _client = genai.Client(api_key=settings.gemini_api_key)
         elif settings.gemini_use_vertex and settings.gemini_project:
-            # IPv4 だけで接続する。なぜ:Cloud Run から呼ぶと、同じ問い合わせが約2秒の回と約7秒の回に分かれた(実測 2026-11-15)。
-            # 手元の Mac から直接呼ぶと 1.6〜4.0 秒で、この差は出ない。差がほぼ5秒で一定なので、IPv6 でつなごうとして
-            # 時間切れを待ってから IPv4 に切り替えている、と推測した(推測。効果は実測で確かめる)
-            import httpx
-            _client = genai.Client(vertexai=True, project=settings.gemini_project, location=settings.gemini_location,
-                                   http_options={"client_args": {"transport": httpx.HTTPTransport(local_address="0.0.0.0")}})
+            _client = genai.Client(vertexai=True, project=settings.gemini_project, location=settings.gemini_location)
     except Exception as e:
         log.warning("Gemini client unavailable: %r", e)
     return _client
 
 
+def _generate(prompt: str):
+    """Gemini を1回呼ぶ。かかった時間と「考えるのに使ったトークン数」をログに出す。"""
+    t0 = time.monotonic()
+    r = _gemini().models.generate_content(model=settings.gemini_model, contents=prompt, config=_GEN_CONFIG)
+    usage = getattr(r, "usage_metadata", None)
+    log.info("Gemini call %.1fs (thoughts=%s)", time.monotonic() - t0, getattr(usage, "thoughts_token_count", None))
+    return r
+
+
+# 同じ問い合わせをもう1本出すまでの待ち時間(秒)と、あきらめるまでの時間(秒)
+HEDGE_AFTER_SECONDS, GIVE_UP_SECONDS = 3.0, 25.0
+_pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="gemini")
+
+
 def _ask_json(prompt: str) -> dict | None:
-    """Gemini に JSON で答えさせる。失敗したら None(呼び出し側が fallback に切り替える)。"""
-    client = _gemini()
-    if not client:
+    """Gemini に JSON で答えさせる。失敗したら None(呼び出し側が fallback に切り替える)。
+
+    遅い回への対策(2026-11-15 実測):同じ問い合わせでも、約2秒で返る回と 5〜13秒かかる回がある。
+    原因は、thinking_budget=0 を指定してもモデルが考えてしまう回があること(ログの thoughts が 400〜1800 トークンの回が遅い)。
+    モデル側の動きでこちらからは止められないので、3秒たっても返らなければ同じ問い合わせをもう1本出し、先に返った方を使う。
+    代わりに、遅い回は Gemini を2回呼ぶ分だけ料金が増える。
+    """
+    if not _gemini():
         return None
+    futures = [_pool.submit(_generate, prompt)]
+    done, _ = wait(futures, timeout=HEDGE_AFTER_SECONDS)
+    if not done:
+        futures.append(_pool.submit(_generate, prompt))
     try:
-        t0 = time.monotonic()
-        r = client.models.generate_content(model=settings.gemini_model, contents=prompt,
-                                           config=_GEN_CONFIG)
-        log.info("Gemini call %.1fs", time.monotonic() - t0)  # 遅さの原因を切り分けるための記録(Gemini 自体か、それ以外か)
-        data = json.loads(r.text)
-        return data if isinstance(data, dict) else None
-    except Exception as e:
-        log.warning("Gemini call failed: %r", e)
-        return None
+        for f in as_completed(futures, timeout=GIVE_UP_SECONDS):
+            try:
+                data = json.loads(f.result().text)
+                if isinstance(data, dict):
+                    return data
+            except Exception as e:  # 片方が失敗しても、もう片方を待つ
+                log.warning("Gemini call failed: %r", e)
+    except TimeoutError:
+        log.warning("Gemini call timed out after %.0fs", GIVE_UP_SECONDS)
+    return None
 
 
 # ---------- ウォームアップ(起動直後の1回目だけ遅い問題への対策) ----------
