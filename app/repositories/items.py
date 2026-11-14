@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.models.entities import ON_SALE, SOLD, Item, Like
@@ -38,8 +38,12 @@ def by_seller(db: Session, seller_id: str) -> list[Item]:
 def similar(db: Session, item: Item, limit: int) -> list[Item]:
     if item.cluster_id is None:
         return []
+    # 同じ AI ジャンル(クラスタ)の中で、同じカテゴリの商品を先に並べる。
+    # なぜ:クラスタは商品名の単語で分けるので、「black」のような色の語で別の種類の商品(例:黒いインク)が同じグループに入ることがある。
+    # 黒いパーカーの「似ている商品」にインクが先頭に出たので(2026-11-15 に本番で確認)、カテゴリが同じものを優先する
+    same_category_first = case((Item.category == item.category, 0), else_=1)
     return list(db.scalars(select(Item).where(Item.cluster_id == item.cluster_id, Item.id != item.id, Item.status == ON_SALE)
-                           .order_by(Item.created_at.desc()).limit(limit)).all())
+                           .order_by(same_category_first, Item.created_at.desc()).limit(limit)).all())
 
 
 def mark_sold_if_on_sale(db: Session, item_id: str) -> bool:
