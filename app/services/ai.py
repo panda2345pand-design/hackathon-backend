@@ -46,7 +46,12 @@ def _gemini():
         if settings.gemini_api_key:
             _client = genai.Client(api_key=settings.gemini_api_key)
         elif settings.gemini_use_vertex and settings.gemini_project:
-            _client = genai.Client(vertexai=True, project=settings.gemini_project, location=settings.gemini_location)
+            # IPv4 だけで接続する。なぜ:Cloud Run から呼ぶと、同じ問い合わせが約2秒の回と約7秒の回に分かれた(実測 2026-11-15)。
+            # 手元の Mac から直接呼ぶと 1.6〜4.0 秒で、この差は出ない。差がほぼ5秒で一定なので、IPv6 でつなごうとして
+            # 時間切れを待ってから IPv4 に切り替えている、と推測した(推測。効果は実測で確かめる)
+            import httpx
+            _client = genai.Client(vertexai=True, project=settings.gemini_project, location=settings.gemini_location,
+                                   http_options={"client_args": {"transport": httpx.HTTPTransport(local_address="0.0.0.0")}})
     except Exception as e:
         log.warning("Gemini client unavailable: %r", e)
     return _client
