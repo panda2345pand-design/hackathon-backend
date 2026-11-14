@@ -48,6 +48,7 @@ tests/             pytest
 - 価格予測:Ridge 回帰(タイトルの TF-IDF + カテゴリ・ブランド・状態)。テスト 141,614 商品で MAE 34.13 USD(カテゴリ別中央値のベースラインは 45.30 USD)、R²(対数)0.510。
 - クラスタリング:TF-IDF → SVD 50次元 → KMeans(k=38、シルエット係数 0.356)。
 - クラスタの日本語名:`models_ml/cluster_labels_ja.json`(手作業の対応表)。中身が寄せ集めの3つ(23・28・31)は `hidden` にして、ホームの一覧(`GET /clusters`)に出さない。学習し直したら付け直す。
+- **学習レポート:[ml/REPORT.md](ml/REPORT.md)**(データ・モデル・指標・k の決め方の弱さ・限界。記録に無い数字は「不明」と書いてある)。
 - 数字の出どころは `models_ml/price_metrics.json`・`models_ml/cluster_info.json`。学習し直しは `python -m ml.train_price` / `python -m ml.train_cluster`(要 `pip install -r ml/requirements-train.txt` と `data/` のデータ)。
 - 限界:米国・英語・ドルのデータを 1 USD = 150 円の固定で換算。日本語のタイトルは価格の推定に使われない。
 
