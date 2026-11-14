@@ -307,6 +307,6 @@ DATABASE_URL='mysql+pymysql://u:p@localhost/nego' alembic upgrade head --sql
 ## デプロイ(Cloud Run)
 
 ```bash
-gcloud run deploy nego-backend --source . --region asia-northeast1 --allow-unauthenticated
+gcloud run deploy hackathon-backend --source . --region asia-northeast1 --allow-unauthenticated
 ```
 環境変数(DATABASE_URL, GEMINI_API_KEY など)は Cloud Run のサービス設定で渡す。`.env` はコミットしない。
