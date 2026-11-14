@@ -78,10 +78,37 @@ def _load_cluster(d: Path) -> dict[str, Any] | None:
         pipe = joblib.load(d / "cluster.joblib")
         info = json.loads((d / "cluster_info.json").read_text(encoding="utf-8"))
         labels = {int(c["cluster_id"]): str(c["label"]) for c in info["clusters"]}
-        return {"pipe": pipe, "info": info, "labels": labels}
+        labels_ja, hidden = _load_cluster_ja(d, labels)
+        return {"pipe": pipe, "info": info, "labels": labels, "labels_ja": labels_ja, "hidden": hidden}
     except Exception as e:
         logger.warning("cluster model unavailable: %s", e)
         return None
+
+
+def _load_cluster_ja(d: Path, labels: dict[int, str]) -> tuple[dict[int, str], set[int]]:
+    """手で付けた日本語名と「隠す」印(cluster_labels_ja.json)を読む。返り値は (日本語名, 隠すクラスタ番号)。
+
+    - ファイルが無い・壊れている → 空を返す(日本語名は英語のラベルで代用され、何も隠さない)。
+    - 学習し直すと同じ番号でも中身が変わる。古い日本語名を別のクラスタに付けないよう、
+      英語のラベルが cluster_info.json と一致する行だけを使う。
+    """
+    try:
+        rows = json.loads((d / "cluster_labels_ja.json").read_text(encoding="utf-8"))["clusters"]
+        ja: dict[int, str] = {}
+        hidden: set[int] = set()
+        for r in rows:
+            cid = int(r["cluster_id"])
+            if labels.get(cid) != r.get("label"):
+                logger.warning("cluster_labels_ja.json: cluster %s does not match cluster_info.json, ignored", cid)
+                continue
+            if isinstance(r.get("label_ja"), str) and r["label_ja"].strip():
+                ja[cid] = r["label_ja"].strip()
+            if r.get("hidden") is True:
+                hidden.add(cid)
+        return ja, hidden
+    except Exception as e:
+        logger.warning("cluster_labels_ja.json unavailable: %s", e)
+        return {}, set()
 
 
 def _state() -> dict[str, Any]:
@@ -276,6 +303,19 @@ def cluster_labels() -> dict[int, str]:
     return dict(c["labels"]) if c else {}
 
 
+def cluster_labels_ja() -> dict[int, str]:
+    """クラスタの日本語名(手で付けたもの)。付いていないクラスタは英語のラベルをそのまま返す。"""
+    c = _state()["cluster"]
+    return {cid: c["labels_ja"].get(cid, label) for cid, label in c["labels"].items()} if c else {}
+
+
+def hidden_clusters() -> set[int]:
+    """ホームの一覧(チップ)に出さないクラスタ。中身が寄せ集めで、名前を付けると誤解を招くもの。
+    隠すのは一覧だけ。商品への割り当て・「似た商品」・cluster での絞り込みは今までどおり動く。"""
+    c = _state()["cluster"]
+    return set(c["hidden"]) if c else set()
+
+
 def categories() -> list[str]:
     """モデルが知っているトップカテゴリ名(学習データでの件数が多い順)。"""
     p = _state()["price"]
@@ -326,6 +366,8 @@ def model_info() -> dict:
             "pipeline": c["pipeline"],
             "trained_rows": c["trained_rows"],
             "k_selection": c["k_selection"],
-            "clusters": [{k: v for k, v in cl.items() if k != "examples"} for cl in c["clusters"]],
+            "clusters": [{**{k: v for k, v in cl.items() if k != "examples"},
+                          "label_ja": st["cluster"]["labels_ja"].get(cl["cluster_id"], cl["label"]),
+                          "hidden": cl["cluster_id"] in st["cluster"]["hidden"]} for cl in c["clusters"]],
         }
     return info

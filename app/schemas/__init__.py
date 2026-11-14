@@ -82,6 +82,7 @@ class ItemDetail(ItemSummary):
     brand: str | None
     predicted_price: int | None
     cluster_label: str | None
+    cluster_label_ja: str | None = None  # 日本語名(手で付けたもの)。無ければ cluster_label と同じ
     seller: UserRef
     liked: bool
 
@@ -115,9 +116,11 @@ def to_summary(i: Item, like_count: int = 0) -> ItemSummary:
                        status=i.status, cluster_id=i.cluster_id, like_count=like_count, created_at=i.created_at)
 
 
-def to_detail(i: Item, like_count: int, liked: bool, cluster_label: str | None) -> ItemDetail:
+def to_detail(i: Item, like_count: int, liked: bool, cluster_label: str | None,
+              cluster_label_ja: str | None = None) -> ItemDetail:
     return ItemDetail(**to_summary(i, like_count).model_dump(), description=i.description, brand=i.brand,
                       predicted_price=i.predicted_price, cluster_label=cluster_label,
+                      cluster_label_ja=cluster_label_ja or cluster_label,
                       seller=UserRef(id=i.seller.id, name=i.seller.name), liked=liked)
 
 

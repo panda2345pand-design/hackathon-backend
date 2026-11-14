@@ -47,6 +47,7 @@ tests/             pytest
 - データ:MerRec(Mercari US, CC BY-NC 4.0)2023年5月分の4ファイル。出典は [seed/README.md](seed/README.md)。
 - 価格予測:Ridge 回帰(タイトルの TF-IDF + カテゴリ・ブランド・状態)。テスト 141,614 商品で MAE 34.13 USD(カテゴリ別中央値のベースラインは 45.30 USD)、R²(対数)0.510。
 - クラスタリング:TF-IDF → SVD 50次元 → KMeans(k=38、シルエット係数 0.356)。
+- クラスタの日本語名:`models_ml/cluster_labels_ja.json`(手作業の対応表)。中身が寄せ集めの3つ(23・28・31)は `hidden` にして、ホームの一覧(`GET /clusters`)に出さない。学習し直したら付け直す。
 - 数字の出どころは `models_ml/price_metrics.json`・`models_ml/cluster_info.json`。学習し直しは `python -m ml.train_price` / `python -m ml.train_cluster`(要 `pip install -r ml/requirements-train.txt` と `data/` のデータ)。
 - 限界:米国・英語・ドルのデータを 1 USD = 150 円の固定で換算。日本語のタイトルは価格の推定に使われない。
 

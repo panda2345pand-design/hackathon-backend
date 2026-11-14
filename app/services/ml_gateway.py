@@ -55,6 +55,24 @@ def cluster_labels() -> dict[int, str]:
         return {}
 
 
+def cluster_labels_ja() -> dict[int, str]:
+    """クラスタの日本語名。無いものは英語のラベル。モデルが無ければ空。"""
+    p = _predictor()
+    try:
+        return {int(k): v for k, v in p.cluster_labels_ja().items()} if p else {}
+    except Exception:
+        return {}
+
+
+def hidden_clusters() -> set[int]:
+    """ホームのチップに出さないクラスタ(中身が寄せ集めのもの)。"""
+    p = _predictor()
+    try:
+        return {int(k) for k in p.hidden_clusters()} if p else set()
+    except Exception:
+        return set()
+
+
 def categories() -> list[str]:
     p = _predictor()
     try:

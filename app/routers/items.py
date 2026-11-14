@@ -18,10 +18,18 @@ DEFAULT_CATEGORIES = ["Women", "Men", "Kids", "Home", "Electronics", "Beauty", "
 DEFAULT_CONDITIONS = ["New", "Like new", "Good", "Fair", "Poor"]
 
 
+def _cluster_names(cluster_id: int | None) -> tuple[str | None, str | None]:
+    """クラスタの (英語のラベル, 日本語名)。日本語名が無ければ英語のラベルで代用する。"""
+    if cluster_id is None:
+        return None, None
+    label = ml_gateway.cluster_labels().get(cluster_id)
+    return label, ml_gateway.cluster_labels_ja().get(cluster_id) or label
+
+
 def _detail(db: Session, item, viewer: User | None) -> S.ItemDetail:
-    label = ml_gateway.cluster_labels().get(item.cluster_id) if item.cluster_id is not None else None
+    label, label_ja = _cluster_names(item.cluster_id)
     liked = bool(viewer and likes_repo.exists(db, viewer.id, item.id))
-    return S.to_detail(item, likes_repo.count(db, item.id), liked, label)
+    return S.to_detail(item, likes_repo.count(db, item.id), liked, label, label_ja)
 
 
 @router.get("/categories")
@@ -31,8 +39,16 @@ def categories():
 
 @router.get("/clusters")
 def clusters(db: Session = Depends(get_db)):
-    labels, counts = ml_gateway.cluster_labels(), items_repo.cluster_counts(db)
-    out = [{"id": cid, "label": labels.get(cid, f"グループ {cid}"), "count": n} for cid, n in counts.items()]
+    """ホームのチップ用の一覧。中身が寄せ集めのクラスタ(hidden)は出さない。
+    隠すのはこの一覧だけで、その商品の詳細・「似た商品」・/items?cluster= は今までどおり使える。"""
+    labels, labels_ja, hidden = ml_gateway.cluster_labels(), ml_gateway.cluster_labels_ja(), ml_gateway.hidden_clusters()
+    counts = items_repo.cluster_counts(db)
+    out = []
+    for cid, n in counts.items():
+        if cid in hidden:
+            continue
+        label = labels.get(cid, f"グループ {cid}")
+        out.append({"id": cid, "label": label, "label_ja": labels_ja.get(cid) or label, "count": n})
     return {"clusters": sorted(out, key=lambda c: -c["count"])}
 
 
@@ -71,8 +87,8 @@ def similar(item_id: str, limit: int = Query(default=8, ge=1, le=24), db: Sessio
     item = items_service.get(db, item_id)
     items = items_repo.similar(db, item, limit)
     counts = items_repo.like_counts(db, [i.id for i in items])
-    label = ml_gateway.cluster_labels().get(item.cluster_id) if item.cluster_id is not None else None
-    return {"cluster_id": item.cluster_id, "cluster_label": label, "items": [S.to_summary(i, counts.get(i.id, 0)) for i in items]}
+    label, label_ja = _cluster_names(item.cluster_id)
+    return {"cluster_id": item.cluster_id, "cluster_label": label, "cluster_label_ja": label_ja, "items": [S.to_summary(i, counts.get(i.id, 0)) for i in items]}
 
 
 @router.post("/items/{item_id}/like")
