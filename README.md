@@ -15,6 +15,8 @@ app/
   models/          ③ モデル層:User / Item / Order。ID と作成日時はここの生成関数で作る
   repositories/    ④ リポジトリ(DAO)層:モデル ↔ SQL
   schemas/         リクエスト/レスポンスの形(pydantic)
+  db_migrate.py    起動時のマイグレーション(Alembic を呼ぶ)
+migrations/        テーブルの変更の履歴(Alembic)。versions/ の1ファイル=1回の変更
 tests/             pytest
 ```
 
@@ -47,6 +49,38 @@ tests/             pytest
 - クラスタリング:TF-IDF → SVD 50次元 → KMeans(k=38、シルエット係数 0.356)。
 - 数字の出どころは `models_ml/price_metrics.json`・`models_ml/cluster_info.json`。学習し直しは `python -m ml.train_price` / `python -m ml.train_cluster`(要 `pip install -r ml/requirements-train.txt` と `data/` のデータ)。
 - 限界:米国・英語・ドルのデータを 1 USD = 150 円の固定で換算。日本語のタイトルは価格の推定に使われない。
+
+## DB のマイグレーション(Alembic)
+
+テーブルの形(列・インデックス)の変更は、Alembic で履歴として管理する。DB 側の `alembic_version` テーブルが「どこまで適用したか」を覚えている。
+
+**起動時に自動で実行する**(`app/db_migrate.py` の `run_migrations()`):
+- 空の DB、または印が付いている DB → `upgrade head`(まだの分だけ実行。最新なら何もしない)。
+- テーブルはあるのに `alembic_version` が無い DB(Alembic を入れる前から動いていた本番)→ テーブルには触らず、「baseline(0001)まで適用済み」の印だけ付ける(stamp)。
+- MySQL では名前付きロック(`GET_LOCK`)を取り、Cloud Run のインスタンスが同時に起動しても1つずつ実行する。
+- DB の URL は `alembic.ini` に書かない(URL の中の `%` が ini の記法とぶつかるため)。アプリの接続/環境変数 `DATABASE_URL` をそのまま使う。
+
+### テーブルを変えるとき(新しいマイグレーションの足し方)
+
+```bash
+# 1. app/models/entities.py を変える(例:Item に列を足す)
+# 2. モデルと手元の DB の差分から、マイグレーションのひな形を作る(手元の DB が最新になっていること。アプリを1回起動すればなる)
+alembic revision --autogenerate -m "items に shipping_fee を追加"
+# 3. migrations/versions/ にできたファイルを必ず読んで直す(自動生成は列名の変更を「削除+追加」と誤解することがある)
+# 4. 手元で適用して、テストを通す
+alembic upgrade head
+pytest
+# 5. 本番に流れる SQL を先に見たいとき(DB にはつながない)
+DATABASE_URL='mysql+pymysql://u:p@localhost/nego' alembic upgrade head --sql
+```
+
+決まり:
+- **適用済みのファイル(`0001_baseline` など)は書き換えない。** 変更は必ず新しいファイルで足す。
+- 既にデータがあるテーブルに NOT NULL の列を足すときは、`server_default` を付けるか、「NULL 可で追加 → 値を埋める → NOT NULL にする」の順にする。
+- MySQL はテーブルの変更(DDL)を取り消せない。途中で失敗すると半端な状態が残るので、1つのマイグレーションは小さくする。
+- デプロイすると起動時に本番へ適用される。新しいコードと古いコードが同時に動く時間があるので、列の削除・改名は「先にコードを対応させてデプロイ → 次のデプロイで削除」の2段階にする。
+- モデルを変えてマイグレーションを足し忘れると、`tests/test_migrations.py` の `test_models_and_migrations_are_in_sync` が落ちる。
+- 1つ戻す:`alembic downgrade -1`。今の版:`alembic current`。履歴:`alembic history`。
 
 ## デモデータ
 ```bash
