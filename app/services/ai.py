@@ -6,6 +6,8 @@
 """
 import json
 import logging
+import threading
+import time
 
 from app.config import settings
 
@@ -22,6 +24,16 @@ PROHIBITED_RULES: list[tuple[str, list[str]]] = [
     ("現金・金券類・個人情報は出品できません", ["現金", "紙幣", "クレジットカード", "口座", "個人情報", "名簿"]),
     ("生き物は出品できません", ["生体", "子犬", "子猫", "live animal"]),
 ]
+
+
+# _ask_json とウォームアップで同じ設定を使う(同じ経路を温めるため、1か所にまとめる)
+# thinking_budget=0:考える時間を切る。実測で 1回 8秒 → 2秒(2026-11-14)。短い文章と判定には十分
+_GEN_CONFIG = {"response_mime_type": "application/json", "temperature": 0.4, "thinking_config": {"thinking_budget": 0}}
+
+
+def _configured() -> bool:
+    """Gemini の接続先が設定されているか(クライアントは作らずに、設定だけを見る)。"""
+    return bool(settings.gemini_api_key or (settings.gemini_use_vertex and settings.gemini_project))
 
 
 def _gemini():
@@ -47,13 +59,44 @@ def _ask_json(prompt: str) -> dict | None:
         return None
     try:
         r = client.models.generate_content(model=settings.gemini_model, contents=prompt,
-                                           # thinking_budget=0:考える時間を切る。実測で 1回 8秒 → 2秒(2026-11-14)。短い文章と判定には十分
-                                           config={"response_mime_type": "application/json", "temperature": 0.4,
-                                                   "thinking_config": {"thinking_budget": 0}})
+                                           config=_GEN_CONFIG)
         data = json.loads(r.text)
         return data if isinstance(data, dict) else None
     except Exception as e:
         log.warning("Gemini call failed: %r", e)
+        return None
+
+
+# ---------- ウォームアップ(起動直後の1回目だけ遅い問題への対策) ----------
+def _warm_up_job() -> None:
+    """クライアントを作り、ごく短い問い合わせを1回だけ投げる。何が起きても例外は外に出さない。"""
+    t0 = time.monotonic()
+    try:
+        client = _gemini()
+        if not client:
+            return
+        client.models.generate_content(model=settings.gemini_model, contents='出力は JSON: {"ok": true}', config=_GEN_CONFIG)
+        log.info("Gemini warm-up done in %.1fs", time.monotonic() - t0)
+    except Exception as e:  # 失敗しても本番の呼び出しは普通に動く(1回目が遅いままになるだけ)
+        log.warning("Gemini warm-up failed after %.1fs: %r", time.monotonic() - t0, e)
+
+
+def warm_up() -> threading.Thread | None:
+    """起動時に呼ぶ。別スレッドで Gemini を温める(起動は待たせない)。
+
+    なぜ:Cloud Run の新しいインスタンスでは、1回目の /ai/describe だけサーバー側で 10〜12 秒かかった(2回目以降は 2〜5 秒。実測)。
+    クライアントの作成・Vertex の認証・接続の確立が1回目に乗るため。それを利用者の最初の操作より前に済ませておく。
+    - Gemini が未設定なら何もしない(テストとローカルはオフラインのまま・速いまま)。
+    - daemon スレッドなので、終了時にこのスレッドを待たない。
+    """
+    if not _configured():
+        return None
+    try:
+        t = threading.Thread(target=_warm_up_job, name="gemini-warm-up", daemon=True)
+        t.start()
+        return t
+    except Exception as e:
+        log.warning("Gemini warm-up thread could not start: %r", e)
         return None
 
 

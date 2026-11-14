@@ -1,4 +1,5 @@
 """エントリポイント。ルーター(コントローラー層)を束ねるだけで、処理はここに書かない。"""
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -10,6 +11,12 @@ from app.config import settings
 from app.db import Base, engine
 from app.errors import AppError
 from app.routers import ai, health, items, users
+from app.services import ai as ai_service
+
+# app.* の INFO ログ(ウォームアップにかかった秒数など)を Cloud Run のログに出す。
+# 何も設定しないと WARNING 以上しか出ない。ほかのライブラリは WARNING のままにして、ログを増やしすぎない
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+logging.getLogger("app").setLevel(logging.INFO)
 
 
 @asynccontextmanager
@@ -18,6 +25,7 @@ async def lifespan(_: FastAPI):
     if settings.seed_on_empty:
         from scripts import seed
         seed.main()
+    ai_service.warm_up()  # Gemini の1回目の遅さを先に済ませる(別スレッド。未設定なら何もしない)
     yield
 
 
