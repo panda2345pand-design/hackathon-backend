@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app import schemas as S
@@ -8,6 +8,7 @@ from app.models.entities import User
 from app.repositories import items as items_repo
 from app.repositories import offers as offers_repo
 from app.repositories import orders as orders_repo
+from app.services import notifications as notifications_service
 from app.services import users as users_service
 
 router = APIRouter(tags=["users"])
@@ -38,3 +39,14 @@ def my_orders(user: User = Depends(current_user), db: Session = Depends(get_db))
 @router.get("/me/offers")
 def my_offers(user: User = Depends(current_user), db: Session = Depends(get_db)):
     return {"offers": [S.to_offer(o) for o in offers_repo.by_buyer(db, user.id)]}
+
+
+@router.get("/me/notifications")
+def my_notifications(limit: int = Query(default=20, ge=1, le=100), user: User = Depends(current_user), db: Session = Depends(get_db)):
+    notifications, unread = notifications_service.list_for(db, user, limit)
+    return {"unread_count": unread, "notifications": [S.to_notification(n) for n in notifications]}
+
+
+@router.post("/me/notifications/read-all")
+def read_all_notifications(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return {"unread_count": notifications_service.read_all(db, user)}

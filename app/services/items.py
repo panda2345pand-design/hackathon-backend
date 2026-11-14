@@ -3,12 +3,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.errors import Conflict, Forbidden, NotFound, Unprocessable
-from app.models.entities import SOLD, Item, Order, User, new_item, new_like, new_order
+from app.models.entities import ITEM_SOLD, SOLD, Item, Order, User, new_item, new_like, new_order
 from app.repositories import items as items_repo
 from app.repositories import likes as likes_repo
 from app.repositories import offers as offers_repo
 from app.repositories import orders as orders_repo
 from app.services import ai, ml_gateway
+from app.services import notifications as notifications_service
 
 
 def get(db: Session, item_id: str) -> Item:
@@ -46,6 +47,7 @@ def purchase(db: Session, buyer: User, item_id: str) -> Order:
         raise Conflict("この商品は売り切れです", "sold")
     try:
         order = orders_repo.add(db, new_order(item.id, buyer.id, price))
+        notifications_service.notify(db, item.seller_id, ITEM_SOLD, item, price)  # 注文と同じトランザクションで保存する
         db.commit()
     except IntegrityError:  # orders.item_id の UNIQUE が最後の砦
         db.rollback()

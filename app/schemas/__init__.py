@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.models.entities import Item, Offer, Order, User
+from app.models.entities import Item, Notification, Offer, Order, User
 
 
 # ---------- 入力 ----------
@@ -107,6 +107,15 @@ class OfferOut(BaseModel):
     created_at: datetime
 
 
+class NotificationOut(BaseModel):
+    id: str
+    type: str
+    message: str
+    item_id: str | None
+    read: bool
+    created_at: datetime
+
+
 def to_user(u: User) -> UserOut:
     return UserOut(id=u.id, name=u.name, created_at=u.created_at)
 
@@ -131,3 +140,7 @@ def to_order(o: Order) -> OrderOut:
 def to_offer(o: Offer) -> OfferOut:
     return OfferOut(id=o.id, item_id=o.item_id, item_title=o.item.title, buyer=UserRef(id=o.buyer.id, name=o.buyer.name),
                     amount=o.amount, message=o.message, ai_comment=o.ai_comment, status=o.status, created_at=o.created_at)
+
+
+def to_notification(n: Notification) -> NotificationOut:
+    return NotificationOut(id=n.id, type=n.type, message=n.message, item_id=n.item_id, read=n.is_read, created_at=n.created_at)

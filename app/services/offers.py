@@ -2,10 +2,12 @@
 from sqlalchemy.orm import Session
 
 from app.errors import Conflict, Forbidden, NotFound, Unprocessable
-from app.models.entities import ACCEPTED, PENDING, REJECTED, SOLD, Offer, User, new_offer
+from app.models.entities import (ACCEPTED, OFFER_ACCEPTED, OFFER_RECEIVED, OFFER_REJECTED, PENDING, REJECTED, SOLD,
+                                 Offer, User, new_offer)
 from app.repositories import offers as offers_repo
 from app.services import ai
 from app.services import items as items_service
+from app.services import notifications as notifications_service
 
 
 def create(db: Session, buyer: User, item_id: str, amount: int, message: str) -> Offer:
@@ -18,6 +20,7 @@ def create(db: Session, buyer: User, item_id: str, amount: int, message: str) ->
         raise Unprocessable("希望額は出品価格より低くしてください", "invalid_amount")
     _, why = ai.acceptance_level(amount, item.price, item.predicted_price)
     offer = offers_repo.add(db, new_offer(item.id, buyer.id, amount, message.strip(), why))
+    notifications_service.notify(db, item.seller_id, OFFER_RECEIVED, item, amount)  # 交渉と同じトランザクションで保存する
     db.commit()
     return offer
 
@@ -40,7 +43,11 @@ def decide(db: Session, seller: User, offer_id: str, accept: bool) -> Offer:
     if accept and offer.item.status == SOLD:
         raise Conflict("この商品は売り切れです", "sold")
     offer.status = ACCEPTED if accept else REJECTED
+    notifications_service.notify(db, offer.buyer_id, OFFER_ACCEPTED if accept else OFFER_REJECTED, offer.item, offer.amount)
     if accept:
+        # 1つ承諾すると、同じ商品のほかの保留中の交渉は自動で断る。断られた買い手にも知らせる
+        for other in offers_repo.other_pending(db, offer.item_id, offer.id):
+            notifications_service.notify(db, other.buyer_id, OFFER_REJECTED, offer.item, other.amount)
         offers_repo.reject_other_pending(db, offer.item_id, offer.id)
     db.commit()
     db.refresh(offer)
