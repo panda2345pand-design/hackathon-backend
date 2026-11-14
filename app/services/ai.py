@@ -58,8 +58,10 @@ def _ask_json(prompt: str) -> dict | None:
     if not client:
         return None
     try:
+        t0 = time.monotonic()
         r = client.models.generate_content(model=settings.gemini_model, contents=prompt,
                                            config=_GEN_CONFIG)
+        log.info("Gemini call %.1fs", time.monotonic() - t0)  # 遅さの原因を切り分けるための記録(Gemini 自体か、それ以外か)
         data = json.loads(r.text)
         return data if isinstance(data, dict) else None
     except Exception as e:
