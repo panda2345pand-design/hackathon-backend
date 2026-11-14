@@ -29,7 +29,10 @@ PROHIBITED_RULES: list[tuple[str, list[str]]] = [
 
 # _ask_json とウォームアップで同じ設定を使う(同じ経路を温めるため、1か所にまとめる)
 # thinking_budget=0:考える時間を切る。実測で 1回 8秒 → 2秒(2026-11-14)。短い文章と判定には十分
-_GEN_CONFIG = {"response_mime_type": "application/json", "temperature": 0.4, "thinking_config": {"thinking_budget": 0}}
+# system_instruction の1文は速さのため。thinking_budget=0 だけでは、約半分の回でモデルが考えてしまい 5〜13 秒かかった。
+# この1文を足すと 10回中10回 考えずに 1.3〜3.4 秒で返った(2026-11-15 実測)
+_GEN_CONFIG = {"response_mime_type": "application/json", "temperature": 0.4, "thinking_config": {"thinking_budget": 0},
+               "system_instruction": "考える過程は不要です。すぐに答えだけを出力してください。"}
 
 
 def _configured() -> bool:
