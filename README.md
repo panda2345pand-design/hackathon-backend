@@ -8,6 +8,7 @@ UTTC 10期 ハッカソン(AIコース)の課題「次世代フリマアプリ�
 
 - 出品するとき:Gemini が説明文の下書きを書き、機械学習モデルが適正価格の目安を出し、出品できない物は理由をつけて止める
 - 買うとき:適正価格の目安とその理由を見て、AI に手伝ってもらいながら価格交渉ができる。合意した金額で購入できる
+- **AI 同士の価格交渉**:売り手は最低価格を、買い手は上限を、自分の AI にだけ伝える。2 つの AI が最大 4 往復して合意額を出す(金額は規則が決め、Gemini はせりふを書く)
 - 探すとき:教師なし学習で分けた「AI ジャンル」と「似ている商品」が出る
 
 | | URL |
@@ -57,7 +58,7 @@ FastAPI(Python)+ SQLAlchemy + Alembic + scikit-learn + Gemini。本番は Cloud 
 |---|---|---|
 | バックエンドは Python | FastAPI | `app/` |
 | フロントエンドは React | Vite + React 19 + TypeScript | [hackathon-frontend](https://github.com/panda2345pand-design/hackathon-frontend) |
-| Gemini API | 説明文の生成/出品禁止物の審査(キーワードの規則の次に Gemini)/価格交渉の文面/英語でない商品名を機械学習モデル用に英語へ直す | `app/services/ai.py` |
+| Gemini API | 説明文の生成/出品禁止物の審査(キーワードの規則の次に Gemini)/価格交渉の文面/AI 同士の価格交渉のせりふ/写真から出品の下書き/英語でない商品名を機械学習モデル用に英語へ直す | `app/services/ai.py` |
 | ユーザー認証 | Firebase Authentication。ID トークンをバックエンドで署名検証する | `app/auth.py` |
 | 出品 | `POST /items`(禁止物チェック → 価格予測・クラスタ付与 → 保存) | `app/services/items.py` |
 | 購入 | `POST /items/{id}/purchase`(決済はしない。同時に買っても成功するのは 1 人) | `app/services/items.py` |
@@ -126,7 +127,7 @@ app/
   db.py            DB 接続(SQLAlchemy)
   routers/         ① コントローラー層:HTTP ↔ JSON。処理は書かない
   services/        ② ユースケース層:出品する・購入する・説明文を生成する…
-  models/          ③ モデル層:User / Item / Order / Offer / Like。ID と作成日時はここの生成関数で作る
+  models/          ③ モデル層:User / Item / Order / Offer / Like / Negotiation / Image / Notification。ID と作成日時はここの生成関数で作る
   repositories/    ④ リポジトリ(DAO)層:モデル ↔ SQL
   schemas/         リクエスト/レスポンスの形(pydantic)
   ml/              学習済みモデルの読み込みと推論
@@ -134,6 +135,7 @@ app/
 migrations/        テーブルの変更の履歴(Alembic)。versions/ の1ファイル=1回の変更
 ml/                学習スクリプトと学習レポート
 models_ml/         学習済みモデルと、学習時に書き出した指標
+scripts/           デモデータを入れる(seed.py)、既存の商品に最低価格を埋める(backfill_min_price.py)
 seed/              デモ用の初期商品 300 件と、その出典
 tests/             pytest
 ```
@@ -153,10 +155,14 @@ tests/             pytest
 | 一覧・検索・詳細 | `GET /items`, `GET /items/{id}` | `repositories/items.py` |
 | 購入(同時購入は1人だけ成功) | `POST /items/{id}/purchase` | `services/items.py` |
 | 価格交渉 | `POST /items/{id}/offers`, `POST /offers/{id}/accept` | `services/offers.py` |
+| AI 同士の価格交渉(金額は規則、せりふは Gemini) | `PATCH /items/{id}/min-price`, `POST /items/{id}/auto-negotiate`, `GET /items/{id}/negotiations` | `services/negotiation_rule.py`, `services/auto_negotiation.py` |
+| 写真(アップロード・配信・写真から出品の下書き) | `POST /images`, `GET /images/{id}`, `POST /ai/describe-image` | `services/images.py`, `services/ai.py` |
+| お知らせ(アプリ内) | `GET /me/notifications`, `POST /me/notifications/read-all` | `services/notifications.py` |
 | 教師あり学習:価格予測 | `GET /items/{id}/price-estimate`, `POST /ai/price` | `app/ml/predictor.py`, `ml/train_price.py` |
 | 教師なし学習:クラスタリング | `GET /clusters`, `GET /items/{id}/similar` | `app/ml/predictor.py`, `ml/train_cluster.py` |
 | Gemini:説明文・禁止物の審査・交渉の文面 | `POST /ai/describe`, `/ai/check`, `/ai/negotiate` | `services/ai.py` |
 | どの AI が何で動いているか | `GET /ai/info` | `routers/ai.py` |
+| いいねされやすさ(検証して載せなかった。いつも `available: false`) | `POST /ai/attention` | `routers/ai.py`, [ml/LIKE_REPORT.md](ml/LIKE_REPORT.md) |
 
 ### 認証の2つのモード(`AUTH_MODE`)
 - `dev`(既定):`Authorization: Bearer dev:<uid>` をそのまま信じる。ローカルとテスト用。
@@ -165,7 +171,7 @@ tests/             pytest
 ## 設計で決めたこと
 
 ### 1. ID・日時・金額はサーバーだけが決める
-- ID(UUID)と `created_at` を作るのは、`app/models/entities.py` の生成関数(`new_user()` / `new_item()` / `new_order()` / `new_offer()` / `new_like()`)だけ。
+- ID(UUID)と `created_at` を作るのは、`app/models/entities.py` の生成関数(`new_user()` / `new_item()` / `new_order()` / `new_offer()` / `new_like()` / `new_negotiation()` / `new_image()` / `new_notification()`)だけ。
 - 出品の入力の形(`app/schemas/__init__.py` の `ItemIn`)に ID・状態・日時の項目は無い。購入の API は本文を受け取らない。
 - 購入金額は `app/services/items.py` の `purchase()` が決める。買い手に承諾済みの交渉があればその金額、なければ出品価格。
 - テスト:`tests/test_api.py` の `test_client_cannot_set_id_or_status`、`test_offer_accept_then_purchase_at_offer_price`、`test_other_buyer_pays_list_price`。
@@ -201,9 +207,32 @@ tests/             pytest
 
 ### 6. テーブルの変更は Alembic で履歴にする
 - 起動時に `app/db_migrate.py` の `run_migrations()` が実行する。Alembic を入れる前から動いていた本番 DB には、テーブルに触らず「baseline まで適用済み」の印だけを付ける。
-- baseline のマイグレーション(`migrations/versions/20261115_0001_baseline.py`)が作るテーブルが、モデルの定義と同じであることをテストで確かめている(`tests/test_migrations.py` の `test_baseline_matches_models`)。
-- 本番の MySQL のスキーマとも突き合わせ、33 列・16 インデックス・7 外部キーが一致することを確かめた(2026-11-15)。
+- マイグレーションを全部実行して作るテーブルが、モデルの定義と同じであることをテストで確かめている(`tests/test_migrations.py` の `test_migrations_match_models`)。
+- baseline(0001)の時点の本番の MySQL のスキーマとは突き合わせ、33 列・16 インデックス・7 外部キーが一致することを確かめた(2026-11-15)。
+- 0002(AI 同士の価格交渉・写真・お知らせ)は、足すだけの変更にしてある。MySQL は DDL を取り消せないので、1 つずつ「無ければ作る」にして、途中で失敗しても再実行できるようにした(`test_0002_can_be_rerun_after_a_partial_failure`)。**0002 は手元の SQLite でだけ実行した。MySQL については、流れる SQL の文面を確かめただけ**(`test_0002_sql_for_mysql`)。
 - 手順と決まりは下の「[DB のマイグレーション(Alembic)](#db-のマイグレーションalembic)」。
+
+### 7. AI 同士の価格交渉:結果は規則が決め、Gemini は言葉だけを書く
+- 合意するか・いくらで合意するかは、`app/services/negotiation_rule.py` の `negotiate()` が決める。DB も Gemini も使わない計算で、同じ入力なら必ず同じ結果になる。
+- なぜ Gemini に決めさせないか:
+  - お金に関わる結果が、呼ぶたびに変わっては困る。規則なら「なぜこの金額か」を式で説明でき、テストで全部の場合を確かめられる(`tests/test_negotiation_rule.py`)。
+  - 「合意額は最低価格以上・上限以下・出品価格以下」を、規則なら必ず守れる。文章を作るモデルには保証させられない。
+  - Gemini が止まっても交渉は成立する(せりふが定型文になるだけ。`source: "fallback"`)。
+- 規則:買い手は出品価格の 70% から上限へ、売り手は出品価格から最低価格へ、4 往復で同じ幅ずつ歩み寄る。買い手の提示が売り手の提示以上になった往復で、2 つの中間(100 円単位)で合意。上限が最低価格より低いときだけ不成立。
+- Gemini の仕事は、決まった金額を各往復のせりふにすること。呼ぶのは会話全体で 1 回。返ってきたせりふにその往復の金額が入っていなければ、全体を定型文に切り替える(`app/services/ai.py` の `negotiation_messages()`)。
+- 合意したら、記録(negotiations)・承諾済みの交渉(offers)・出品者へのお知らせを 1 つのトランザクションで保存する。だから既存の購入の処理は変えずに、合意額で買える(`tests/test_auto_negotiation.py` の `test_agreed_then_purchase_at_agreed_price`)。
+- 最低価格(`min_price`)は出品者本人にだけ、上限(`max_price`)は買い手本人にだけ返す(`test_min_price_is_visible_only_to_the_seller`、`test_negotiation_list_and_privacy`)。ただし往復の金額から逆算はできる(下の「正直な限界」)。
+
+### 8. 写真は、今は DB に入れる
+- `POST /images` で受け取った写真は、バイト列のまま `images` テーブルに入れ、`GET /images/{id}` で返す(MySQL では MEDIUMBLOB)。
+- なぜ:Cloud Run のコンテナのディスクは再起動で消えるので、ファイルとしては置けない。Cloud Storage を使うのが本来の形だが、バケット・権限・署名つき URL の設定が増える。ハッカソンの期間では、すでにある DB だけで完結させ、バックアップも DB 1 つで済むほうを選んだ。
+- この選び方の限界:
+  - 写真を表示するたびに、アプリと DB を通る(CDN から直接は配れない)。同じ写真は `Cache-Control: immutable` でブラウザに 1 年使い回させて、回数を減らしている。
+  - DB が写真の分だけ大きくなる(1 枚最大 2MB)。枚数が増えると、バックアップと復元が遅くなり、DB の料金も増える。
+  - 1 枚を丸ごとメモリに載せて返すので、大きい写真は扱えない。だから 2MB までにしている。
+  - 利用者が増えたら、保存先を Cloud Storage に移す。画面は `image_url` を見ているだけなので、URL を変えれば移せる。
+- 写真の種類は、ファイルの先頭のバイト列で決める(`app/services/images.py` の `detect_content_type()`)。リクエストの Content-Type は送る側が自由に書けるので信用しない。
+- `image_ai_generated`(AI が作ったイメージ画像か)は、出品のときに 1 回だけ調べて `items` の列に入れる。一覧のたびに `images` を引かないため。
 
 ## 機械学習
 - データ:MerRec(Mercari US, CC BY-NC 4.0)2023年5月分の4ファイル。出典は [seed/README.md](seed/README.md)。
@@ -217,14 +246,18 @@ tests/             pytest
 - 数字の出どころは `models_ml/price_metrics.json`・`models_ml/cluster_info.json`。学習し直しは `python -m ml.train_price` / `python -m ml.train_cluster`(要 `pip install -r ml/requirements-train.txt` と `data/` のデータ)。
 
 ## テストと CI
-- `pytest` で 53 件(API の結合テスト、同時購入、交渉から購入まで、禁止物の規則、機械学習の推論、クラスタの日本語名、マイグレーション、Gemini の 2 本目の問い合わせ、ウォームアップ)。
+- `pytest` で 110 件(API の結合テスト、同時購入、交渉から購入まで、AI 同士の価格交渉の規則と合意額での購入、写真、お知らせ、禁止物の規則、機械学習の推論、クラスタの日本語名、マイグレーション、Gemini の 2 本目の問い合わせ、ウォームアップ)。
 - テストは SQLite と `AUTH_MODE=dev` で、Gemini のキーが無い状態で動く(`tests/conftest.py`)。
 - GitHub Actions(`.github/workflows/ci.yml`)が、main への push とプルリクエストごとに `pytest` を実行する。結果はこのページの先頭のバッジ。
 
 ## 正直な限界
 
 - **価格は日本の相場と合わない。** 学習データは米国メルカリ(英語・USD)で、円の値は 1 USD = 150 円の固定で換算しただけ(`app/ml/predictor.py` の `USD_JPY`)。「しくみが動くこと」を見せるためのもので、日本で使える価格ではない。
-- **商品の写真が無い。** 元のデータセットに画像が無いので、画面のカードにはカテゴリごとのアイコンを出している。
+- **デモ商品の写真は実物ではない。** 元のデータセットに画像が無い。見本用に AI が作ったイメージ画像を付けた商品は `image_ai_generated: true` で返し、画面で「AI 生成のイメージ」と明記する。
+- **AI 同士の価格交渉では、往復の金額から相手の限度額が分かる。** `min_price` / `max_price` という項目は本人にしか返さないが、4 往復目の提示は限度額そのもので、それより前でも歩み寄りの幅が一定なので逆算できる。1 人 5 回までの制限では防げない。防ぐには規則のほうを変える必要がある(例:不成立のときは最後の提示を見せない、歩み寄りの幅を一定にしない)。
+- **AI 同士の価格交渉の数字(70% から始める・4 往復・中間で合意)は仮の値。** 実際の交渉データで確かめたものではない。
+- **写真は DB に入れている。** 枚数が増えると DB が重くなる(「設計で決めたこと」の 8)。
+- **2 本目の教師あり学習(いいねされやすさ)は載せていない。** test AUC 0.612 で、事前に決めた基準 0.65 に届かなかった([ml/LIKE_REPORT.md](ml/LIKE_REPORT.md))。
 - **k=38 の根拠は弱い。** シルエット係数は k を増やすほど上がり続け、参考に測った k=50〜100 のほうが高かった。38 は「画面に出すラベルは 40 個まで」という都合の中で選んだ数。詳しくは [ml/REPORT.md](ml/REPORT.md)。
 - **高い商品で誤差が大きい。** MAE(34.13 USD)は中央絶対誤差(10.50 USD)の約 3.3 倍で、少数の大外れが平均を押し上げている。価格帯別の誤差は測っていない。
 - **英語に直した商品名での精度は測っていない。** 日本語の商品名は Gemini で英訳してからモデルに渡しているが、その経路での誤差は不明。
@@ -256,6 +289,7 @@ Gemini のキーが無くても動く(AI の文章は定型文になり、`sourc
 ```bash
 python -m scripts.seed          # 商品が無いときだけ 300 件入れる
 python -m scripts.seed --reset  # デモ用ユーザーの商品を入れ直す
+python -m scripts.backfill_min_price --dry-run  # すでにあるデモ商品のうち、最低価格が未設定の件数を見る(外すと実際に埋める)
 ```
 
 ### 環境変数
@@ -271,6 +305,7 @@ python -m scripts.seed --reset  # デモ用ユーザーの商品を入れ直す
 | `GEMINI_MODEL` | 使う Gemini のモデル名 |
 | `CORS_ORIGINS` / `CORS_ORIGIN_REGEX` | 画面のオリジンの許可 |
 | `SEED_ON_EMPTY` | `true` のとき、起動時に商品が 1 件も無ければデモデータを入れる |
+| `PUBLIC_BASE_URL` | 写真の URL の先頭に使う、このバックエンドの公開 URL(本番は `https://…`)。空ならリクエストが届いた URL を使う |
 
 ## DB のマイグレーション(Alembic)
 
