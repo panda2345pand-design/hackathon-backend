@@ -32,7 +32,7 @@ def _detail(db: Session, item, viewer: User | None) -> S.ItemDetail:
 
 def _negotiation(n, viewer: User) -> S.NegotiationOut:
     """交渉の記録を JSON の形にする。買い手の上限(max_price)は買い手本人にだけ返す。"""
-    return S.to_negotiation(n, show_max_price=n.buyer_id == viewer.id, rule=negotiation_rule.rule_text(n.outcome))
+    return S.to_negotiation(n, show_max_price=n.buyer_id == viewer.id, rule=negotiation_rule.rule_text())
 
 
 @router.get("/categories")

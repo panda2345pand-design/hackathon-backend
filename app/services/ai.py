@@ -265,7 +265,8 @@ def _valid_messages(data: dict | None, rounds: list[dict]) -> list[dict] | None:
 
 
 def _fallback_messages(rounds: list[dict], agreed_price: int | None) -> list[dict]:
-    """Gemini が使えないときの定型のせりふ。同じ入力なら必ず同じ文になる。"""
+    """Gemini が使えないときの定型のせりふ。同じ入力なら必ず同じ文になる。
+    「ここまでなら出せる」「これより下げられない」のような、限度額だと分かる言い方はしない。"""
     out = []
     for r in rounds:
         first, last = r["round"] == 1, r is rounds[-1]
@@ -273,18 +274,18 @@ def _fallback_messages(rounds: list[dict], agreed_price: int | None) -> list[dic
         if first:
             buyer = f"はじめまして。{buyer_offer}でお譲りいただけないでしょうか。"
         elif last:
-            buyer = f"{buyer_offer}まででしたらお出しできます。いかがでしょうか。"
+            buyer = f"{buyer_offer}でいかがでしょうか。ご検討をお願いします。"
         else:
             buyer = f"では、{buyer_offer}ではいかがでしょうか。"
         if last and agreed_price is not None:
             if r["seller_ask"] == agreed_price:
                 seller = f"ありがとうございます。{seller_ask}でお譲りします。"
             else:
-                seller = f"{seller_ask}までお下げできます。間を取って¥{agreed_price:,}で成立とさせてください。"
+                seller = f"{seller_ask}と考えていましたが、間を取って¥{agreed_price:,}で成立とさせてください。"
         elif last:
-            seller = f"申し訳ありません。{seller_ask}より下げるのは難しいです。"
+            seller = f"{seller_ask}でいかがでしょうか。今回はこれ以上は難しいです。"
         elif first:
-            seller = f"ご提案ありがとうございます。{seller_ask}でしたらお受けできます。"
+            seller = f"ご提案ありがとうございます。{seller_ask}でいかがでしょうか。"
         else:
             seller = f"もう少し歩み寄って、{seller_ask}ではいかがでしょうか。"
         out.append({"buyer_message": buyer, "seller_message": seller})
@@ -308,6 +309,7 @@ def negotiation_messages(title: str, rounds: list[dict], outcome: str, agreed_pr
         "各往復について、buyer_message(買い手のAIのせりふ)と seller_message(売り手のAIのせりふ)を日本語で書いてください。\n"
         f"条件:丁寧で短く、それぞれ{MESSAGE_CHARS}字以内。buyer_message にはその往復の買い手の提示額を、"
         "seller_message にはその往復の売り手の提示額を必ず入れる。最後の往復のせりふは結果に合わせる。"
+        "「これが精一杯です」「これ以上は下げられません」のように、その金額が限界だと分かる言い方はしない。"
         "上に書かれていない金額や、商品について与えられていないこと(状態・付属品・理由など)は書かない。\n"
         '出力は JSON: {"rounds": [{"round": 1, "buyer_message": "...", "seller_message": "..."}]}')
     messages = _valid_messages(data, rounds)

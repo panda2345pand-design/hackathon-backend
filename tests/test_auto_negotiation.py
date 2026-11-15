@@ -3,10 +3,10 @@ from sqlalchemy import select
 
 from app.db import SessionLocal
 from app.models.entities import Negotiation, Offer, Order
-from app.services import ai
+from app.services import ai, negotiation_rule
 from tests.conftest import ITEM, auth
 
-# 出品 5,000 円・最低 4,000 円。上限 4,500 円なら 3 往復目(買い手 4,300 / 売り手 4,300)に 4,300 円で合意する
+# 出品 5,000 円・最低 4,000 円。上限 4,500 円なら必ず合意する(合意額は 4,000〜4,500 円。歩み寄る幅は交渉ごとに変わる)
 NEGOTIABLE = {**ITEM, "min_price": 4000}
 
 
@@ -81,9 +81,11 @@ def test_agreed_then_purchase_at_agreed_price(client, users):
     r = _negotiate(client, users["bob"], item["id"], 4500)
     assert r.status_code == 200, r.text
     n = r.json()
-    assert n["outcome"] == "agreed" and n["agreed_price"] == 4300 and n["list_price"] == 5000 and n["max_price"] == 4500
+    agreed = n["agreed_price"]
+    assert n["outcome"] == "agreed" and 4000 <= agreed <= 4500 and n["list_price"] == 5000 and n["max_price"] == 4500
     assert n["item_id"] == item["id"] and len(n["id"]) == 36 and n["created_at"] and n["source"] == "fallback" and n["rule"]
-    assert [(x["round"], x["buyer_offer"], x["seller_ask"]) for x in n["rounds"]] == [(1, 3800, 4800), (2, 4000, 4500), (3, 4300, 4300)]
+    assert [x["round"] for x in n["rounds"]] == list(range(1, len(n["rounds"]) + 1)) and 1 <= len(n["rounds"]) <= 4
+    assert all(x["buyer_offer"] <= 4500 and x["seller_ask"] >= 4000 for x in n["rounds"])
     for x in n["rounds"]:  # せりふには、その往復の金額が入っている
         assert f"¥{x['buyer_offer']:,}" in x["buyer_message"] and f"¥{x['seller_ask']:,}" in x["seller_message"]
     assert "min_price" not in n and "floor" not in n  # 売り手の最低価格という項目は、返り値に無い
@@ -91,13 +93,13 @@ def test_agreed_then_purchase_at_agreed_price(client, users):
     # 合意と同時に、承諾済みの交渉(offers)が合意額で作られている
     offers = client.get("/me/offers", headers=users["bob"]).json()["offers"]
     assert len(offers) == 1 and offers[0]["id"] == n["offer_id"]
-    assert offers[0]["status"] == "accepted" and offers[0]["amount"] == 4300
+    assert offers[0]["status"] == "accepted" and offers[0]["amount"] == agreed
 
     # 既存の購入が、合意額で通る。DB の orders.price も合意額
     order = client.post(f"/items/{item['id']}/purchase", headers=users["bob"])
-    assert order.status_code == 201 and order.json()["price"] == 4300
+    assert order.status_code == 201 and order.json()["price"] == agreed
     with SessionLocal() as db:
-        assert db.scalar(select(Order.price).where(Order.item_id == item["id"])) == n["agreed_price"] == 4300
+        assert db.scalar(select(Order.price).where(Order.item_id == item["id"])) == agreed
 
 
 def test_other_buyer_still_pays_list_price(client, users):
@@ -117,7 +119,8 @@ def test_no_deal_then_retry_and_limit(client, users):
     item = _create(client, users)
     n = _negotiate(client, users["bob"], item["id"], 3000).json()
     assert n["outcome"] == "no_deal" and n["agreed_price"] is None and n["offer_id"] is None and len(n["rounds"]) == 4
-    assert "不成立" in n["rule"]
+    assert n["rounds"][-1]["buyer_offer"] == 3000 and all(x["seller_ask"] > 4000 for x in n["rounds"])  # 最低価格そのものは出ない
+    assert "4,000" not in str(n) and "4000" not in str(n["rounds"])
     assert client.get("/me/offers", headers=users["bob"]).json()["offers"] == []  # 不成立では offers を作らない
 
     item = _create(client, users)  # 回数の上限:1 商品につき 1 人 5 回まで
@@ -204,10 +207,10 @@ def test_seller_is_notified_only_on_agreement(client, users):
     item = _create(client, users)
     _negotiate(client, users["bob"], item["id"], 3000)
     assert client.get("/me/notifications", headers=users["alice"]).json()["unread_count"] == 0
-    _negotiate(client, users["bob"], item["id"], 4500)
+    agreed = _negotiate(client, users["bob"], item["id"], 4500).json()["agreed_price"]
     notes = client.get("/me/notifications", headers=users["alice"]).json()["notifications"]
     assert [n["type"] for n in notes] == ["auto_negotiation_agreed"]
-    assert "¥4,300" in notes[0]["message"] and "Nike running shoes" in notes[0]["message"] and notes[0]["item_id"] == item["id"]
+    assert f"¥{agreed:,}" in notes[0]["message"] and "Nike running shoes" in notes[0]["message"] and notes[0]["item_id"] == item["id"]
     assert client.get("/me/notifications", headers=users["bob"]).json()["unread_count"] == 0
 
 
@@ -222,11 +225,13 @@ def _gemini_answer(rounds, buyer="{b}円でお願いできますか。", seller=
 
 def test_gemini_messages_are_used_and_the_prompt_has_no_limits(client, users, monkeypatch):
     prompts = []
+    rounds = [{"round": i + 1, "buyer_offer": b, "seller_ask": s} for i, (b, s) in enumerate([(3800, 4800), (4000, 4500), (4300, 4300)])]
+    # 歩み寄る幅は交渉ごとに変わるので、このテストでは規則の結果を固定する(見たいのは Gemini とのやりとり)
+    monkeypatch.setattr(negotiation_rule, "negotiate",
+                        lambda price, floor, max_price, seed: {"outcome": "agreed", "agreed_price": 4300, "rounds": rounds})
 
     def fake_ask(prompt):
         prompts.append(prompt)
-        rounds = [{"round": i + 1, "buyer_offer": b, "seller_ask": s}
-                  for i, (b, s) in enumerate([(3800, 4800), (4000, 4500), (4300, 4300)])]
         return _gemini_answer(rounds)
 
     item = _create(client, users)  # 出品時の禁止物チェックも Gemini を使うので、出品してから差し替える
@@ -269,3 +274,18 @@ def test_fallback_messages_are_short_and_deterministic():
             assert f"¥{r['buyer_offer']:,}" in m["buyer_message"] and f"¥{r['seller_ask']:,}" in m["seller_message"]
     assert "¥4,300" in ai._fallback_messages(ROUNDS, 4300)[-1]["seller_message"]  # 合意した往復では合意額も言う
     assert "難しい" in ai._fallback_messages(big, None)[-1]["seller_message"]
+    for rounds, agreed in cases:  # 限度額だと分かる言い方をしない
+        for m in ai._fallback_messages(rounds, agreed):
+            text = m["buyer_message"] + m["seller_message"]
+            assert not any(w in text for w in ("上限", "最低", "より下げ", "まで下げ", "までお下げ", "精一杯", "までしか", "まででしたら")), text
+
+
+def test_seed_changes_with_each_attempt(client, users, monkeypatch):
+    """乱数の種は「商品・買い手・何回目か」から作る。同じ買い手がやり直すたびに、歩み寄る幅が変わる。"""
+    seeds, real = [], negotiation_rule.negotiate
+    monkeypatch.setattr(negotiation_rule, "negotiate", lambda p, f, m, seed: seeds.append(seed) or real(p, f, m, seed))
+    item = _create(client, users)
+    _negotiate(client, users["bob"], item["id"], 3000)
+    _negotiate(client, users["bob"], item["id"], 3000)
+    _negotiate(client, users["carol"], item["id"], 3000)
+    assert len(set(seeds)) == 3 and all(item["id"] in s for s in seeds) and seeds[0].endswith(":1") and seeds[1].endswith(":2")

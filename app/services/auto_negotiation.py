@@ -7,6 +7,7 @@
 
 相手の限度額を見せない:売り手の最低価格(items.min_price)と買い手の上限(negotiations.max_price)は、
 本人への返り値にしか入れない(app/schemas の to_detail / to_negotiation)。Gemini にも「限度額」としては渡さない。
+売り手の提示は最低価格まで下げず、歩み寄る幅は毎回変える(negotiation_rule)。提示の金額から最低価格を逆算できないようにするため。
 """
 import json
 
@@ -44,7 +45,9 @@ def run(db: Session, buyer: User, item_id: str, max_price: int) -> Negotiation:
     """AI 同士の価格交渉を 1 回行い、記録を返す。合意したら、承諾済みの交渉(offers)を作る → 既存の購入がその金額で通る。"""
     item = _item_open_for(db, buyer, item_id)
     title, list_price = item.title, item.price
-    result = negotiation_rule.negotiate(list_price, item.min_price, max_price)
+    # 歩み寄る幅を決める乱数の種。商品・買い手・何回目か、から作る(毎回ちがう幅になる。あとから同じ計算をやり直すこともできる)
+    attempt = negotiations_repo.count_for(db, item.id, buyer.id) + 1
+    result = negotiation_rule.negotiate(list_price, item.min_price, max_price, seed=f"{item.id}:{buyer.id}:{attempt}")
 
     # ここまでは読み取りだけ。Gemini の返事を待つ数秒のあいだ DB のトランザクションを開けたままにしないよう、いったん閉じる。
     # 開けたままだと、待っている間に商品が売れても気づけない(MySQL は、トランザクションを始めた時点の内容を見せ続ける)
@@ -56,7 +59,7 @@ def run(db: Session, buyer: User, item_id: str, max_price: int) -> Negotiation:
     offer_id = None
     if result["outcome"] == negotiation_rule.AGREED:
         offer = offers_repo.add(db, new_offer(item.id, buyer.id, result["agreed_price"], OFFER_MESSAGE,
-                                              negotiation_rule.rule_text(result["outcome"]), status=ACCEPTED))
+                                              negotiation_rule.rule_text(), status=ACCEPTED))
         offer_id = offer.id
         notifications_service.notify(db, item.seller_id, AUTO_NEGOTIATION_AGREED, item, result["agreed_price"])
     negotiation = negotiations_repo.add(db, new_negotiation(
