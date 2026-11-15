@@ -63,6 +63,18 @@ class NegotiateIn(BaseModel):
     amount: int = Field(ge=300, le=9_999_999)
 
 
+class DescribeImageIn(BaseModel):
+    image_id: str = Field(min_length=1, max_length=36)
+
+
+class AttentionIn(BaseModel):
+    title: str = Field(max_length=100)
+    category: str = Field(max_length=80)
+    condition: str = Field(max_length=40)
+    brand: str | None = Field(default=None, max_length=80)
+    price: int
+
+
 # ---------- 出力 ----------
 class UserOut(BaseModel):
     id: str
@@ -142,6 +154,12 @@ class NegotiationOut(BaseModel):
     rule: str
     created_at: datetime
     buyer: UserRef
+
+
+class ImageOut(BaseModel):
+    id: str
+    url: str
+    content_type: str
 
 
 class NotificationOut(BaseModel):

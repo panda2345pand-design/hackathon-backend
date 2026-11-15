@@ -34,3 +34,11 @@ class Unprocessable(AppError):
 
 class TooManyRequests(AppError):
     status, code = 429, "too_many_requests"
+
+
+class PayloadTooLarge(AppError):
+    status, code = 413, "payload_too_large"
+
+
+class UnsupportedMediaType(AppError):
+    status, code = 415, "unsupported_media_type"

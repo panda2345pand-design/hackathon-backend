@@ -11,7 +11,7 @@ from app.config import settings
 from app.db import engine
 from app.db_migrate import run_migrations
 from app.errors import AppError
-from app.routers import ai, health, items, users
+from app.routers import ai, health, images, items, users
 from app.services import ai as ai_service
 
 # app.* の INFO ログ(ウォームアップにかかった秒数など)を Cloud Run のログに出す。
@@ -49,7 +49,7 @@ async def app_error_handler(_: Request, e: AppError):
     return JSONResponse(status_code=e.status, content={"detail": {"code": e.code, "message": e.message}})
 
 
-for r in (health.router, users.router, items.router, ai.router):
+for r in (health.router, users.router, items.router, images.router, ai.router):
     app.include_router(r)
 
 

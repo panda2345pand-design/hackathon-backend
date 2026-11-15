@@ -57,8 +57,9 @@ def _gemini():
     return _client
 
 
-def _generate(prompt: str):
-    """Gemini を1回呼ぶ。かかった時間と「考えるのに使ったトークン数」をログに出す。"""
+def _generate(prompt):
+    """Gemini を1回呼ぶ。かかった時間と「考えるのに使ったトークン数」をログに出す。
+    prompt は文字列。写真を見せるときだけ [写真, 文字列] のリスト(describe_image)。"""
     t0 = time.monotonic()
     r = _gemini().models.generate_content(model=settings.gemini_model, contents=prompt, config=_GEN_CONFIG)
     usage = getattr(r, "usage_metadata", None)
@@ -71,7 +72,7 @@ HEDGE_AFTER_SECONDS, GIVE_UP_SECONDS = 3.0, 25.0
 _pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="gemini")
 
 
-def _ask_json(prompt: str) -> dict | None:
+def _ask_json(prompt) -> dict | None:
     """Gemini に JSON で答えさせる。失敗したら None(呼び出し側が fallback に切り替える)。
 
     遅い回への対策(2026-11-15 実測):同じ問い合わせでも、約2秒で返る回と 5〜13秒かかる回がある。
@@ -313,3 +314,44 @@ def negotiation_messages(title: str, rounds: list[dict], outcome: str, agreed_pr
     if messages:
         return messages, "gemini"
     return _fallback_messages(rounds, agreed_price), "fallback"
+
+
+# ---------- 5. 写真から出品の下書きを作る ----------
+_NO_DRAFT = {"title": None, "category": None, "condition": None, "brand": None, "description": None}
+
+
+def _text_or_none(value, max_chars: int) -> str | None:
+    """Gemini の返事の 1 項目を、空でない文字列(出品の入力欄に入る長さ)か None にする。"""
+    return value.strip()[:max_chars] if isinstance(value, str) and value.strip() else None
+
+
+def describe_image(data: bytes, content_type: str, categories: list[str], conditions: list[str]) -> dict:
+    """保存してある写真を Gemini に見せて、出品の下書き(商品名・カテゴリ・状態・ブランド・説明文)を作る。
+
+    - カテゴリと状態は、アプリの選択肢(categories / conditions)の中の値だけを通す。それ以外の答えは None にする
+      (選択肢に無い値をそのまま画面に入れると、出品の入力欄と合わなくなるため)。
+    - Gemini が使えない・答えが形になっていないときは、全部 None で source="fallback"(写真だけでは定型文を作れない)。
+    """
+    if not _gemini():
+        return {**_NO_DRAFT, "source": "fallback"}
+    from google.genai import types  # Gemini を使うときだけ読み込む(未設定の環境では要らない)
+    answer = _ask_json([
+        types.Part.from_bytes(data=data, mime_type=content_type),
+        "あなたはフリマアプリの出品を手伝うアシスタントです。この写真の商品について、出品の下書きを作ってください。\n"
+        "写真から分かることだけを書く。写真から分からないこと(サイズ・購入時期・付属品・動作確認など)は書かない。\n"
+        "title = 商品名(40字以内の日本語。ブランド名や型番が読み取れれば入れる)。\n"
+        f"category = 次のどれか 1 つ: {json.dumps(categories, ensure_ascii=False)}。自信がなければ null。\n"
+        f"condition = 次のどれか 1 つ(左ほど状態が良い): {json.dumps(conditions, ensure_ascii=False)}。写真から判断できなければ null。\n"
+        "brand = ロゴなどから読み取れたブランド名。分からなければ null。\n"
+        "description = 説明文(80〜160字の日本語。誇大な表現は使わない)。\n"
+        '出力は JSON: {"title": "...", "category": "...", "condition": "...", "brand": "...", "description": "..."}'])
+    if not answer:
+        return {**_NO_DRAFT, "source": "fallback"}
+    title, description = _text_or_none(answer.get("title"), 100), _text_or_none(answer.get("description"), 3000)
+    if not title and not description:  # 下書きとして使えるものが何も無い
+        return {**_NO_DRAFT, "source": "fallback"}
+    category, condition = answer.get("category"), answer.get("condition")
+    return {"title": title,
+            "category": category if category in categories else None,
+            "condition": condition if condition in conditions else None,
+            "brand": _text_or_none(answer.get("brand"), 80), "description": description, "source": "gemini"}

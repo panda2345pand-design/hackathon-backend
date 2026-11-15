@@ -89,6 +89,25 @@ def conditions() -> list[str]:
         return []
 
 
+# モデルが無いとき用の既定の選択肢(モデルがあれば、モデルが知っているカテゴリ・状態を使う)
+DEFAULT_CATEGORIES = ["Women", "Men", "Kids", "Home", "Electronics", "Beauty", "Toys & Collectibles", "Sports & Outdoors", "Other"]
+DEFAULT_CONDITIONS = ["New", "Like new", "Good", "Fair", "Poor"]
+
+
+def category_choices() -> list[str]:
+    """画面の選択肢に出すカテゴリ(GET /categories と、写真からの下書きで同じ一覧を使う)。"""
+    return categories() or DEFAULT_CATEGORIES
+
+
+def condition_choices() -> list[str]:
+    return conditions() or DEFAULT_CONDITIONS
+
+
+# 2本目の教師あり学習(いいねされやすさ)は、検証して載せないと決めた。画面が「無い」と分かるように理由つきで返す
+ATTENTION_UNAVAILABLE = {"available": False,
+                         "reason": "精度が事前の基準(AUC 0.65)に届かなかったため載せていない(test AUC 0.612)。詳しくは ml/LIKE_REPORT.md"}
+
+
 def model_info() -> dict:
     p = _predictor()
     try:

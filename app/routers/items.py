@@ -14,10 +14,6 @@ from app.services import offers as offers_service
 
 router = APIRouter(tags=["items"])
 
-# モデルが無いとき用の既定の選択肢(モデルがあれば、モデルが知っているカテゴリ・状態を返す)
-DEFAULT_CATEGORIES = ["Women", "Men", "Kids", "Home", "Electronics", "Beauty", "Toys & Collectibles", "Sports & Outdoors", "Other"]
-DEFAULT_CONDITIONS = ["New", "Like new", "Good", "Fair", "Poor"]
-
 
 def _cluster_names(cluster_id: int | None) -> tuple[str | None, str | None]:
     """クラスタの (英語のラベル, 日本語名)。日本語名が無ければ英語のラベルで代用する。"""
@@ -41,7 +37,7 @@ def _negotiation(n, viewer: User) -> S.NegotiationOut:
 
 @router.get("/categories")
 def categories():
-    return {"categories": ml_gateway.categories() or DEFAULT_CATEGORIES, "conditions": ml_gateway.conditions() or DEFAULT_CONDITIONS}
+    return {"categories": ml_gateway.category_choices(), "conditions": ml_gateway.condition_choices()}
 
 
 @router.get("/clusters")

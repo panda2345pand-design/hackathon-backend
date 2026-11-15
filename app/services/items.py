@@ -9,6 +9,7 @@ from app.repositories import likes as likes_repo
 from app.repositories import offers as offers_repo
 from app.repositories import orders as orders_repo
 from app.services import ai, ml_gateway
+from app.services import images as images_service
 from app.services import notifications as notifications_service
 
 
@@ -35,7 +36,8 @@ def create(db: Session, seller: User, title: str, description: str, category: st
     est = ml_gateway.predict_price(title, category, brand, condition)
     cl = ml_gateway.assign_cluster(title, category)
     item = items_repo.add(db, new_item(seller.id, title.strip(), description.strip(), category, brand, condition, price,
-                                       image_url, est.get("predicted_price"), cl.get("cluster_id"), min_price))
+                                       image_url, est.get("predicted_price"), cl.get("cluster_id"), min_price,
+                                       images_service.is_ai_generated(db, image_url)))
     db.commit()
     return item
 

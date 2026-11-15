@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     cors_origin_regex: str = ""
     # true のとき、起動時に商品が1件も無ければデモデータを入れる(Cloud SQL につなぐまでの仮の対応。コンテナ内の SQLite は再起動で消えるため)
     seed_on_empty: bool = False
+    # 写真の URL(https://<ここ>/images/<id>)の先頭に使う、このバックエンドの公開 URL。
+    # Cloud Run はプロキシの後ろで動くので、リクエストから読める URL が http:// になることがある。本番ではここに https:// の URL を入れる。
+    # 空なら、リクエストが届いた URL を使う(ローカル用)
+    public_base_url: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:
