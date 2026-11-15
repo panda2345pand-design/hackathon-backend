@@ -81,7 +81,7 @@
 - 買い手の提示 `buyer_offer[r]` = start + (max_price − start) × b_r(0 < b_1 < b_2 < b_3 < b_4 = 1)。1〜3 往復目は 100 円単位に切り捨て。**4 往復目は max_price そのもの**
 - 売り手の提示 `seller_ask[r]` = price − (price − floor) × s_r(0 < s_1 < s_2 < s_3 < s_4、s_4 は 0.60〜0.90)。100 円単位に切り上げ。
   **s が 1 にならないので、売り手の提示は最低価格まで下がらない**(floor = price のときだけ、提示は price のまま)
-- はじめて `buyer_offer[r] >= seller_ask[r]` になった往復で合意。合意額 = 2つの中間(100 円単位に四捨五入してから、floor 以上・max_price 以下・price 以下に収める)。`rounds` は合意した往復で終わる
+- はじめて `buyer_offer[r] >= seller_ask[r]` になった往復で合意。合意額 = 2つの中間(100 円単位に切り捨て。売り手の提示は下回らない。そのうえで、floor 以上・max_price 以下・price 以下に収める)。`rounds` は合意した往復で終わる
 - 4 往復目でも届かないとき:`max_price >= floor` なら、売り手の AI が買い手の最後の提示を受け入れて **max_price で合意**
   (その往復の `seller_ask` は合意額 = max_price になり、売り手のせりふは受け入れの文になる)。`max_price < floor` なら不成立
 - 不成立の `rounds` は 4 つ。最後の `buyer_offer` は max_price、`seller_ask` はどれも最低価格より高い

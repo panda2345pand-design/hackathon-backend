@@ -27,7 +27,17 @@ def test_fixed_example():
     assert out["outcome"] == "agreed" and 6000 <= out["agreed_price"] <= 9900
     last = out["rounds"][-1]
     assert last["buyer_offer"] >= last["seller_ask"]
-    assert out["agreed_price"] == min(9900, max(6000, (last["buyer_offer"] + last["seller_ask"] + 100) // 200 * 100))  # 2 つの中間
+    middle = (last["buyer_offer"] + last["seller_ask"]) // 200 * 100  # 2 つの中間を 100 円単位に切り捨て
+    assert out["agreed_price"] == min(9900, max(6000, last["seller_ask"], middle))
+
+
+def test_buyer_never_pays_more_than_the_seller_asked():
+    """合意額は、その往復の売り手の提示以上・買い手の提示以下(提示が ¥3,600 と ¥3,500 なら ¥3,500 で、¥3,600 にはしない)。"""
+    for seed in range(300):
+        out = negotiate(price=4000, floor=3200, max_price=3600, seed=seed)
+        last = out["rounds"][-1]
+        assert out["outcome"] == "agreed"
+        assert last["seller_ask"] <= out["agreed_price"] <= last["buyer_offer"]
 
 
 def test_different_seeds_give_different_steps():

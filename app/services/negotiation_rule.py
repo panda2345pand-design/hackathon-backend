@@ -69,7 +69,10 @@ def negotiate(price: int, floor: int, max_price: int, seed) -> dict:
         seller_ask = _clamp(math.ceil(raw / UNIT) * UNIT, floor, price)
         rounds.append({"round": r, "buyer_offer": buyer_offer, "seller_ask": seller_ask})
         if buyer_offer >= seller_ask:
-            middle = _round_to_unit((buyer_offer + seller_ask) / 2)
+            # 2つの提示の中間で合意する。100円単位には切り捨てる(売り手の提示を下回らない範囲で)。
+            # なぜ切り捨てか:四捨五入だと、提示が ¥3,600 と ¥3,500 のとき中間 ¥3,550 が ¥3,600 に上がり、
+            # 売り手が ¥3,500 でよいと言っているのに買い手が ¥3,600 払う、というおかしな結果になった(2026-11-15 に本番で確認)
+            middle = max(seller_ask, math.floor((buyer_offer + seller_ask) / 2 / UNIT) * UNIT)
             return {"outcome": AGREED, "agreed_price": _clamp(middle, floor, min(max_price, price)), "rounds": rounds}
 
     if max_price >= floor:
