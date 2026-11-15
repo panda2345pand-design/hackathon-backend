@@ -30,3 +30,7 @@ class Conflict(AppError):
 
 class Unprocessable(AppError):
     status, code = 422, "unprocessable"
+
+
+class TooManyRequests(AppError):
+    status, code = 429, "too_many_requests"

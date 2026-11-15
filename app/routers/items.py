@@ -7,8 +7,9 @@ from app.db import get_db
 from app.models.entities import ON_SALE, User
 from app.repositories import items as items_repo
 from app.repositories import likes as likes_repo
+from app.services import auto_negotiation
 from app.services import items as items_service
-from app.services import ml_gateway
+from app.services import ml_gateway, negotiation_rule
 from app.services import offers as offers_service
 
 router = APIRouter(tags=["items"])
@@ -29,7 +30,13 @@ def _cluster_names(cluster_id: int | None) -> tuple[str | None, str | None]:
 def _detail(db: Session, item, viewer: User | None) -> S.ItemDetail:
     label, label_ja = _cluster_names(item.cluster_id)
     liked = bool(viewer and likes_repo.exists(db, viewer.id, item.id))
-    return S.to_detail(item, likes_repo.count(db, item.id), liked, label, label_ja)
+    is_seller = bool(viewer and viewer.id == item.seller_id)  # 最低価格(min_price)は出品者本人にだけ返す
+    return S.to_detail(item, likes_repo.count(db, item.id), liked, label, label_ja, show_min_price=is_seller)
+
+
+def _negotiation(n, viewer: User) -> S.NegotiationOut:
+    """交渉の記録を JSON の形にする。買い手の上限(max_price)は買い手本人にだけ返す。"""
+    return S.to_negotiation(n, show_max_price=n.buyer_id == viewer.id, rule=negotiation_rule.rule_text(n.outcome))
 
 
 @router.get("/categories")
@@ -62,13 +69,29 @@ def list_items(q: str | None = None, category: str | None = None, cluster: int |
 
 @router.post("/items", response_model=S.ItemDetail, status_code=201)
 def create_item(body: S.ItemIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    item = items_service.create(db, user, body.title, body.description, body.category, body.brand, body.condition, body.price, body.image_url)
+    item = items_service.create(db, user, body.title, body.description, body.category, body.brand, body.condition, body.price,
+                                body.image_url, body.min_price)
     return _detail(db, item, user)
 
 
 @router.get("/items/{item_id}", response_model=S.ItemDetail)
 def get_item(item_id: str, viewer: User | None = Depends(optional_user), db: Session = Depends(get_db)):
     return _detail(db, items_service.get(db, item_id), viewer)
+
+
+@router.patch("/items/{item_id}/min-price", response_model=S.ItemDetail)
+def set_min_price(item_id: str, body: S.MinPriceIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return _detail(db, items_service.set_min_price(db, user, item_id, body.min_price), user)
+
+
+@router.post("/items/{item_id}/auto-negotiate", response_model=S.NegotiationOut)
+def auto_negotiate(item_id: str, body: S.AutoNegotiateIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return _negotiation(auto_negotiation.run(db, user, item_id, body.max_price), user)
+
+
+@router.get("/items/{item_id}/negotiations")
+def item_negotiations(item_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return {"negotiations": [_negotiation(n, user) for n in auto_negotiation.list_for_item(db, user, item_id)]}
 
 
 @router.post("/items/{item_id}/purchase", response_model=S.OrderOut, status_code=201)

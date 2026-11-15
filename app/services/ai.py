@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed, w
 import logging
 import threading
 import time
+import unicodedata
 
 from app.config import settings
 
@@ -227,3 +228,88 @@ def negotiate(title: str, price: int, predicted_price: int | None, amount: int) 
         tip = why + "。"
         source = "fallback"
     return {"acceptance": level, "reply": reply, "seller_tip": tip, "predicted_price": predicted_price, "reason": why, "source": source}
+
+
+# ---------- 4. AI 同士の価格交渉のせりふ ----------
+MESSAGE_CHARS = 60        # せりふ 1 つの長さ(Gemini に頼む長さ。定型文もこの中に収める)
+MESSAGE_CHARS_LIMIT = 80  # これを超えたら受け取らない。Gemini は字数を正確には数えないので、頼んだ長さより少し長いものまでは通す
+
+
+def _mentions(text: str, amount: int) -> bool:
+    """文の中にその金額が入っているか(5,800 と 5800 のどちらの書き方でもよい。全角の数字は半角に直してから見る)。"""
+    plain = unicodedata.normalize("NFKC", text)
+    return f"{amount:,}" in plain or str(amount) in plain
+
+
+def _valid_messages(data: dict | None, rounds: list[dict]) -> list[dict] | None:
+    """Gemini の返事が頼んだ形か。往復の数が合い、どのせりふも短く、その往復の金額が入っていれば、せりふの一覧を返す。
+    1 つでも合わなければ None(全体を定型文にする。金額は規則で決めたものなので、違う金額のせりふは出さない)。"""
+    got = (data or {}).get("rounds")
+    if not isinstance(got, list) or len(got) != len(rounds):
+        return None
+    out = []
+    for r, m in zip(rounds, got):
+        if not isinstance(m, dict):
+            return None
+        buyer, seller = m.get("buyer_message"), m.get("seller_message")
+        if not (isinstance(buyer, str) and isinstance(seller, str)):
+            return None
+        buyer, seller = buyer.strip(), seller.strip()
+        if not (0 < len(buyer) <= MESSAGE_CHARS_LIMIT and 0 < len(seller) <= MESSAGE_CHARS_LIMIT):
+            return None
+        if not (_mentions(buyer, r["buyer_offer"]) and _mentions(seller, r["seller_ask"])):
+            return None
+        out.append({"buyer_message": buyer, "seller_message": seller})
+    return out
+
+
+def _fallback_messages(rounds: list[dict], agreed_price: int | None) -> list[dict]:
+    """Gemini が使えないときの定型のせりふ。同じ入力なら必ず同じ文になる。"""
+    out = []
+    for r in rounds:
+        first, last = r["round"] == 1, r is rounds[-1]
+        buyer_offer, seller_ask = f"¥{r['buyer_offer']:,}", f"¥{r['seller_ask']:,}"
+        if first:
+            buyer = f"はじめまして。{buyer_offer}でお譲りいただけないでしょうか。"
+        elif last:
+            buyer = f"{buyer_offer}まででしたらお出しできます。いかがでしょうか。"
+        else:
+            buyer = f"では、{buyer_offer}ではいかがでしょうか。"
+        if last and agreed_price is not None:
+            if r["seller_ask"] == agreed_price:
+                seller = f"ありがとうございます。{seller_ask}でお譲りします。"
+            else:
+                seller = f"{seller_ask}までお下げできます。間を取って¥{agreed_price:,}で成立とさせてください。"
+        elif last:
+            seller = f"申し訳ありません。{seller_ask}より下げるのは難しいです。"
+        elif first:
+            seller = f"ご提案ありがとうございます。{seller_ask}でしたらお受けできます。"
+        else:
+            seller = f"もう少し歩み寄って、{seller_ask}ではいかがでしょうか。"
+        out.append({"buyer_message": buyer, "seller_message": seller})
+    return out
+
+
+def negotiation_messages(title: str, rounds: list[dict], outcome: str, agreed_price: int | None) -> tuple[list[dict], str]:
+    """AI 同士の価格交渉の、各往復のせりふを書く。返り値は ([{"buyer_message", "seller_message"}, ...], "gemini" | "fallback")。
+
+    - 金額と結果は規則(negotiation_rule)で決まっている。Gemini はそれを言葉にするだけ。
+    - Gemini を呼ぶのは、会話全体で 1 回(往復ごとに呼ぶと 4 倍の時間と料金がかかり、前後のせりふもつながらない)。
+    - Gemini に渡すのは、商品名と各往復の金額だけ。売り手の最低価格・買い手の上限を「限度額」としては渡さない
+      (渡していない言葉は、せりふに出てこない)。
+    """
+    lines = [f"{r['round']}往復目: 買い手の提示 {r['buyer_offer']}円 / 売り手の提示 {r['seller_ask']}円" for r in rounds]
+    ending = f"{len(rounds)}往復目に {agreed_price}円で合意" if agreed_price is not None else "合意できずに終了"
+    data = _ask_json(
+        "あなたは、フリマアプリで買い手のAIと売り手のAIが価格交渉をする会話の、せりふを書く係です。"
+        "金額と結果はすでに決まっていて、変えてはいけません。\n"
+        f"商品: {title}\n" + "\n".join(lines) + f"\n結果: {ending}\n"
+        "各往復について、buyer_message(買い手のAIのせりふ)と seller_message(売り手のAIのせりふ)を日本語で書いてください。\n"
+        f"条件:丁寧で短く、それぞれ{MESSAGE_CHARS}字以内。buyer_message にはその往復の買い手の提示額を、"
+        "seller_message にはその往復の売り手の提示額を必ず入れる。最後の往復のせりふは結果に合わせる。"
+        "上に書かれていない金額や、商品について与えられていないこと(状態・付属品・理由など)は書かない。\n"
+        '出力は JSON: {"rounds": [{"round": 1, "buyer_message": "...", "seller_message": "..."}]}')
+    messages = _valid_messages(data, rounds)
+    if messages:
+        return messages, "gemini"
+    return _fallback_messages(rounds, agreed_price), "fallback"

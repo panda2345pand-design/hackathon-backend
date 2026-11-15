@@ -19,16 +19,34 @@ def get(db: Session, item_id: str) -> Item:
     return item
 
 
+def check_min_price(min_price: int | None, price: int) -> None:
+    """最低価格は 1 円以上・出品価格以下(None = 設定しない)。出品価格より高い「最低価格」は意味が通らないので受け付けない。"""
+    if min_price is not None and not 1 <= min_price <= price:
+        raise Unprocessable("最低価格は 1 円以上、出品価格以下にしてください", "invalid_min_price")
+
+
 def create(db: Session, seller: User, title: str, description: str, category: str, brand: str | None,
-           condition: str, price: int, image_url: str | None) -> Item:
+           condition: str, price: int, image_url: str | None, min_price: int | None = None) -> Item:
     """出品する。①禁止物チェック → ②価格予測とクラスタ付与(ML)→ ③保存。"""
+    check_min_price(min_price, price)
     verdict = ai.check(title, description, category)
     if not verdict["ok"]:
         raise Unprocessable(verdict["reason"] or "出品できない商品です", "prohibited")
     est = ml_gateway.predict_price(title, category, brand, condition)
     cl = ml_gateway.assign_cluster(title, category)
     item = items_repo.add(db, new_item(seller.id, title.strip(), description.strip(), category, brand, condition, price,
-                                       image_url, est.get("predicted_price"), cl.get("cluster_id")))
+                                       image_url, est.get("predicted_price"), cl.get("cluster_id"), min_price))
+    db.commit()
+    return item
+
+
+def set_min_price(db: Session, seller: User, item_id: str, min_price: int | None) -> Item:
+    """AI 同士の価格交渉の最低価格を変える(None = 自動交渉をやめる)。出品者本人だけ。"""
+    item = get(db, item_id)
+    if item.seller_id != seller.id:
+        raise Forbidden("出品者だけが変更できます", "not_seller")
+    check_min_price(min_price, item.price)
+    item.min_price = min_price
     db.commit()
     return item
 
